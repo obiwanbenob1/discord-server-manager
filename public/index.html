@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Server Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151937;
+            --bg-card: #1a1f3a;
+            --accent-primary: #00ff88;
+            --accent-secondary: #00d4ff;
+            --accent-danger: #ff3366;
+            --text-primary: #e8f4f8;
+            --text-secondary: #8b9dc3;
+            --border: #2a3354;
+            --shadow: rgba(0, 255, 136, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            padding: 4rem 0 3rem;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--accent-primary) 0%, transparent 70%);
+            opacity: 0.1;
+            filter: blur(60px);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.1; transform: translateX(-50%) scale(1); }
+            50% { opacity: 0.15; transform: translateX(-50%) scale(1.1); }
+        }
+
+        h1 {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .login-section {
+            text-align: center;
+            padding: 4rem 2rem;
+            animation: fadeIn 1s ease-out 0.4s both;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary);
+            border: none;
+            padding: 1.2rem 3rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            font-family: 'Space Mono', monospace;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 20px var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: left 0.3s ease;
+        }
+
+        .login-btn:hover::before {
+            left: 100%;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px var(--shadow);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 20px var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--accent-primary);
+            font-family: 'Archivo Black', sans-serif;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.5rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--shadow);
+        }
+
+        .btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-secondary);
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            border-color: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ff1a4d;
+            border-color: #ff1a4d;
+            box-shadow: 0 4px 20px rgba(255, 51, 102, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .server-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .server-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            animation: slideUp 0.4s ease-out both;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .server-card:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .server-card.selected {
+            border-color: var(--accent-secondary);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .server-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .server-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            flex-shrink: 0;
+            border: 2px solid var(--border);
+            overflow: hidden;
+        }
+
+        .server-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .server-info {
+            flex: 1;
+        }
+
+        .server-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .server-members {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: var(--accent-primary);
+        }
+
+        .server-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-item-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-item-value {
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+
+        .stat-item-value.inactive {
+            color: var(--accent-danger);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(255, 51, 102, 0.1);
+            border: 1px solid var(--accent-danger);
+            color: var(--accent-danger);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box {
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid var(--accent-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-box p {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-active {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-primary);
+        }
+
+        .badge-inactive {
+            background: rgba(255, 51, 102, 0.2);
+            color: var(--accent-danger);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-primary);
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        // State management
+        let state = {
+            isAuthenticated: false,
+            loading: false,
+            error: null,
+            servers: [],
+            user: null,
+            selectedServers: new Set(),
+            searchTerm: '',
+            sortBy: 'activity',
+            accessToken: null
+        };
+
+        // Check for OAuth callback
+        function handleOAuthCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            const error = params.get('error');
+            
+            if (error) {
+                state.error = 'Authentication failed. Please try again.';
+                window.history.replaceState({}, document.title, window.location.pathname);
+                render();
+                return;
+            }
+            
+            if (token) {
+                state.accessToken = token;
+                localStorage.setItem('discord_token', token);
+                window.history.replaceState({}, document.title, window.location.pathname);
+                loadDiscordData(token);
+            } else {
+                const savedToken = localStorage.getItem('discord_token');
+                if (savedToken) {
+                    state.accessToken = savedToken;
+                    loadDiscordData(savedToken);
+                }
+            }
+        }
+
+        async function handleDiscordLogin() {
+            try {
+                const response = await fetch('/api/auth/url');
+                const data = await response.json();
+                window.location.href = data.url;
+            } catch (error) {
+                state.error = 'Failed to initiate login. Please try again.';
+                render();
+            }
+        }
+
+        async function loadDiscordData(token) {
+            state.loading = true;
+            state.error = null;
+            render();
+
+            try {
+                // Fetch user info
+                const userResponse = await fetch('/api/user', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!userResponse.ok) {
+                    throw new Error('Failed to fetch user data');
+                }
+
+                const userData = await userResponse.json();
+                state.user = userData;
+
+                // Fetch guilds
+                const guildsResponse = await fetch('/api/guilds', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!guildsResponse.ok) {
+                    throw new Error('Failed to fetch servers');
+                }
+
+                const guilds = await guildsResponse.json();
+                state.servers = guilds;
+
+                state.isAuthenticated = true;
+                state.loading = false;
+                render();
+            } catch (error) {
+                state.error = error.message;
+                state.loading = false;
+                localStorage.removeItem('discord_token');
+                render();
+            }
+        }
+
+        async function leaveGuild(guildId) {
+            const response = await fetch(`/api/guilds/${guildId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${state.accessToken}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to leave server');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('discord_token');
+            state = {
+                isAuthenticated: false,
+                loading: false,
+                error: null,
+                servers: [],
+                user: null,
+                selectedServers: new Set(),
+                searchTerm: '',
+                sortBy: 'activity',
+                accessToken: null
+            };
+            render();
+        }
+
+        function formatDate(date) {
+            const now = Date.now();
+            const diff = now - new Date(date);
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor(diff / (1000 * 60));
+
+            if (days > 30) return `${days} days ago`;
+            if (days > 0) return `${days}d ago`;
+            if (hours > 0) return `${hours}h ago`;
+            if (minutes > 0) return `${minutes}m ago`;
+            return 'Just now';
+        }
+
+        function getFilteredServers() {
+            return state.servers
+                .filter(server => server.name.toLowerCase().includes(state.searchTerm.toLowerCase()))
+                .sort((a, b) => {
+                    if (state.sortBy === 'activity') {
+                        return new Date(b.lastMessageDate) - new Date(a.lastMessageDate);
+                    } else if (state.sortBy === 'yourActivity') {
+                        return new Date(b.yourLastActivity) - new Date(a.yourLastActivity);
+                    } else if (state.sortBy === 'members') {
+                        return b.memberCount - a.memberCount;
+                    }
+                    return 0;
+                });
+        }
+
+        function getStats() {
+            return {
+                total: state.servers.length,
+                active: state.servers.filter(s => (Date.now() - new Date(s.lastMessageDate)) / (1000 * 60 * 60 * 24) < 7).length,
+                inactive: state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 30).length,
+                selected: state.selectedServers.size,
+            };
+        }
+
+        function toggleServer(serverId) {
+            if (state.selectedServers.has(serverId)) {
+                state.selectedServers.delete(serverId);
+            } else {
+                state.selectedServers.add(serverId);
+            }
+            render();
+        }
+
+        function selectInactive() {
+            const inactiveServers = state.servers.filter(server => {
+                const daysSinceActivity = (Date.now() - new Date(server.yourLastActivity)) / (1000 * 60 * 60 * 24);
+                return daysSinceActivity > 30;
+            });
+            state.selectedServers = new Set(inactiveServers.map(s => s.id));
+            render();
+        }
+
+        async function handleMassLeave() {
+            if (state.selectedServers.size === 0) return;
+            
+            if (!confirm(`Are you sure you want to leave ${state.selectedServers.size} server(s)? This action cannot be undone.`)) {
+                return;
+            }
+
+            state.loading = true;
+            render();
+
+            try {
+                const promises = Array.from(state.selectedServers).map(serverId => 
+                    leaveGuild(serverId)
+                );
+                
+                await Promise.all(promises);
+                
+                state.servers = state.servers.filter(s => !state.selectedServers.has(s.id));
+                state.selectedServers = new Set();
+                state.loading = false;
+                render();
+            } catch (error) {
+                state.error = 'Failed to leave some servers: ' + error.message;
+                state.loading = false;
+                render();
+            }
+        }
+
+        function updateSearch(value) {
+            state.searchTerm = value;
+            render();
+        }
+
+        function updateSort(value) {
+            state.sortBy = value;
+            render();
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (!state.isAuthenticated && !state.loading) {
+                app.innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>Discord Server Manager</h1>
+                            <p class="subtitle">Declutter your Discord, reclaim your focus</p>
+                        </div>
+
+                        ${state.error ? `<div class="error">Error: ${state.error}</div>` : ''}
+
+                        <div class="info-box">
+                            <p>Analyze your Discord servers and identify which ones you're no longer active in. Mass-leave servers with one click to declutter your server list.</p>
+                        </div>
+
+                        <div class="login-section">
+                            <button class="login-btn" onclick="handleDiscordLogin()">
+                                Login with Discord
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (state.loading && state.servers.length === 0) {
+                app.innerHTML = `
+                    <div class="container">
+                        <div class="header">
+                            <h1>Discord Server Manager</h1>
+                        </div>
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Loading your servers...</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const stats = getStats();
+            const filteredServers = getFilteredServers();
+
+            app.innerHTML = `
+                <div class="container">
+                    <div class="header">
+                        <h1>Discord Server Manager</h1>
+                        <p class="subtitle">Declutter your Discord, reclaim your focus</p>
+                    </div>
+
+                    ${state.error ? `<div class="error">${state.error}</div>` : ''}
+
+                    ${state.user ? `
+                        <div class="user-info">
+                            <img class="user-avatar" src="https://cdn.discordapp.com/avatars/${state.user.id}/${state.user.avatar}.png?size=128" alt="Avatar" onerror="this.style.display='none'">
+                            <div class="user-details">
+                                <div class="user-name">${state.user.username}${state.user.discriminator !== '0' ? '#' + state.user.discriminator : ''}</div>
+                                <div style="color: var(--text-secondary); font-size: 0.9rem;">Connected to Discord</div>
+                            </div>
+                            <button class="btn" onclick="handleLogout()">Logout</button>
+                        </div>
+                    ` : ''}
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.total}</div>
+                            <div class="stat-label">Total Servers</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.active}</div>
+                            <div class="stat-label">Active (7d)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.inactive}</div>
+                            <div class="stat-label">You Inactive (30d+)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.selected}</div>
+                            <div class="stat-label">Selected</div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <input
+                            type="text"
+                            class="search-box"
+                            placeholder="Search servers..."
+                            value="${state.searchTerm}"
+                            oninput="updateSearch(this.value)"
+                        />
+                        <select class="btn" onchange="updateSort(this.value)">
+                            <option value="activity" ${state.sortBy === 'activity' ? 'selected' : ''}>Server Activity</option>
+                            <option value="yourActivity" ${state.sortBy === 'yourActivity' ? 'selected' : ''}>Your Activity</option>
+                            <option value="members" ${state.sortBy === 'members' ? 'selected' : ''}>Member Count</option>
+                        </select>
+                        <button class="btn" onclick="selectInactive()">Select Inactive</button>
+                        <button class="btn btn-danger" onclick="handleMassLeave()" ${state.selectedServers.size === 0 || state.loading ? 'disabled' : ''}>
+                            ${state.loading ? 'Leaving...' : `Leave ${state.selectedServers.size} Server${state.selectedServers.size !== 1 ? 's' : ''}`}
+                        </button>
+                    </div>
+
+                    <div class="server-list">
+                        ${filteredServers.map((server, index) => {
+                            const daysSinceYourActivity = (Date.now() - new Date(server.yourLastActivity)) / (1000 * 60 * 60 * 24);
+                            const isInactive = daysSinceYourActivity > 30;
+                            const isSelected = state.selectedServers.has(server.id);
+
+                            return `
+                                <div class="server-card ${isSelected ? 'selected' : ''}" style="animation-delay: ${index * 0.05}s">
+                                    <div class="server-header">
+                                        <input
+                                            type="checkbox"
+                                            class="checkbox"
+                                            ${isSelected ? 'checked' : ''}
+                                            onchange="toggleServer('${server.id}')"
+                                        />
+                                        <div class="server-icon">
+                                            ${server.icon ? `<img src="${server.icon}" alt="${server.name}">` : server.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div class="server-info">
+                                            <div class="server-name">${server.name}</div>
+                                            <div class="server-members">${server.memberCount.toLocaleString()} members ${server.owner ? '• Owner' : ''}</div>
+                                        </div>
+                                        <span class="badge ${isInactive ? 'badge-inactive' : 'badge-active'}">
+                                            ${isInactive ? 'Inactive' : 'Active'}
+                                        </span>
+                                    </div>
+                                    <div class="server-stats">
+                                        <div class="stat-item">
+                                            <div class="stat-item-label">Last Message</div>
+                                            <div class="stat-item-value">${formatDate(server.lastMessageDate)}</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-item-label">Your Last Activity</div>
+                                            <div class="stat-item-value ${isInactive ? 'inactive' : ''}">${formatDate(server.yourLastActivity)}</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-item-label">Messages (7d)</div>
+                                            <div class="stat-item-value">${server.messagesLast7Days}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize on page load
+        handleOAuthCallback();
+        render();
+    </script>
+</body>
+</html>
