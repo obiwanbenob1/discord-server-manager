@@ -639,19 +639,42 @@
             state.loading = true;
             render();
 
+            const selectedArray = Array.from(state.selectedServers);
+            const failed = [];
+            const succeeded = [];
+
             try {
-                const promises = Array.from(state.selectedServers).map(serverId => 
-                    leaveGuild(serverId)
-                );
+                // Leave servers one at a time with delay to avoid rate limits
+                for (let i = 0; i < selectedArray.length; i++) {
+                    const serverId = selectedArray[i];
+                    try {
+                        await leaveGuild(serverId);
+                        succeeded.push(serverId);
+                        
+                        // Add delay between requests (500ms) to avoid rate limiting
+                        if (i < selectedArray.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    } catch (error) {
+                        console.error(`Failed to leave server ${serverId}:`, error);
+                        failed.push(serverId);
+                    }
+                }
                 
-                await Promise.all(promises);
-                
-                state.servers = state.servers.filter(s => !state.selectedServers.has(s.id));
-                state.selectedServers = new Set();
+                // Remove successfully left servers
+                state.servers = state.servers.filter(s => !succeeded.includes(s.id));
+                state.selectedServers = new Set(failed);
                 state.loading = false;
+                
+                if (failed.length > 0) {
+                    state.error = `Successfully left ${succeeded.length} server(s). Failed to leave ${failed.length} server(s). You may be the owner of these servers or lack permission to leave them.`;
+                } else {
+                    state.error = null;
+                }
+                
                 render();
             } catch (error) {
-                state.error = 'Failed to leave some servers: ' + error.message;
+                state.error = 'Failed to leave servers: ' + error.message;
                 state.loading = false;
                 render();
             }
