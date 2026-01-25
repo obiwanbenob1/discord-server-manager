@@ -815,9 +815,8 @@
             return state.servers
                 .filter(s => s.name.toLowerCase().includes(state.searchTerm.toLowerCase()))
                 .sort((a, b) => {
-                    if (state.sortBy === 'activity') return new Date(b.lastMessageDate) - new Date(a.lastMessageDate);
-                    if (state.sortBy === 'yourActivity') return new Date(b.yourLastActivity) - new Date(a.yourLastActivity);
                     if (state.sortBy === 'members') return b.memberCount - a.memberCount;
+                    if (state.sortBy === 'name') return a.name.localeCompare(b.name);
                     return 0;
                 });
         }
@@ -825,8 +824,7 @@
         function getServerStats() {
             return {
                 total: state.servers.length,
-                active: state.servers.filter(s => (Date.now() - new Date(s.lastMessageDate)) / (1000 * 60 * 60 * 24) < 7).length,
-                inactive: state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 30).length,
+                owned: state.servers.filter(s => s.owner).length,
                 selected: state.selectedServers.size
             };
         }
@@ -840,11 +838,9 @@
             render();
         }
 
-        function selectInactiveServers() {
-            const inactive = state.servers.filter(s => 
-                (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 30
-            );
-            state.selectedServers = new Set(inactive.map(s => s.id));
+        function selectSmallServers() {
+            const small = state.servers.filter(s => s.memberCount < 100);
+            state.selectedServers = new Set(small.map(s => s.id));
             render();
         }
 
@@ -994,12 +990,8 @@
                         <div class="stat-label">Total Servers</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value">${stats.active}</div>
-                        <div class="stat-label">Active (7d)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.inactive}</div>
-                        <div class="stat-label">You Inactive (30d+)</div>
+                        <div class="stat-value">${stats.owned}</div>
+                        <div class="stat-label">Servers You Own</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.selected}</div>
@@ -1010,11 +1002,10 @@
                 <div class="controls">
                     <input type="text" class="search-box" placeholder="Search servers..." value="${state.searchTerm}" oninput="updateSearch(this.value)"/>
                     <select class="btn" onchange="updateSort(this.value)">
-                        <option value="activity" ${state.sortBy === 'activity' ? 'selected' : ''}>Server Activity</option>
-                        <option value="yourActivity" ${state.sortBy === 'yourActivity' ? 'selected' : ''}>Your Activity</option>
+                        <option value="name" ${state.sortBy === 'name' ? 'selected' : ''}>Name (A-Z)</option>
                         <option value="members" ${state.sortBy === 'members' ? 'selected' : ''}>Member Count</option>
                     </select>
-                    <button class="btn" onclick="selectInactiveServers()">Select Inactive</button>
+                    <button class="btn" onclick="selectSmallServers()">Select Small Servers</button>
                     <button class="btn" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
                         Open ${stats.selected} Selected
                     </button>
@@ -1022,8 +1013,6 @@
 
                 <div class="item-list">
                     ${filtered.map((server, i) => {
-                        const daysSinceActivity = (Date.now() - new Date(server.yourLastActivity)) / (1000 * 60 * 60 * 24);
-                        const isInactive = daysSinceActivity > 30;
                         const isSelected = state.selectedServers.has(server.id);
 
                         return `
@@ -1036,23 +1025,6 @@
                                     <div class="item-info">
                                         <div class="item-name">${server.name}</div>
                                         <div class="item-subtitle">${server.memberCount.toLocaleString()} members ${server.owner ? '• Owner' : ''}</div>
-                                    </div>
-                                    <span class="badge ${isInactive ? 'badge-inactive' : 'badge-active'}">
-                                        ${isInactive ? 'Inactive' : 'Active'}
-                                    </span>
-                                </div>
-                                <div class="item-stats">
-                                    <div class="stat-item">
-                                        <div class="stat-item-label">Last Message</div>
-                                        <div class="stat-item-value">${formatDate(server.lastMessageDate)}</div>
-                                    </div>
-                                    <div class="stat-item">
-                                        <div class="stat-item-label">Your Last Activity</div>
-                                        <div class="stat-item-value ${isInactive ? 'inactive' : ''}">${formatDate(server.yourLastActivity)}</div>
-                                    </div>
-                                    <div class="stat-item">
-                                        <div class="stat-item-label">Messages (7d)</div>
-                                        <div class="stat-item-value">${server.messagesLast7Days}</div>
                                     </div>
                                 </div>
                                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
@@ -1168,7 +1140,6 @@
             const ownedServers = state.servers.filter(s => s.owner);
             const largeServers = state.servers.filter(s => s.memberCount > 1000).sort((a, b) => b.memberCount - a.memberCount);
             const smallServers = state.servers.filter(s => s.memberCount < 50);
-            const activeServers = state.servers.filter(s => (Date.now() - new Date(s.lastMessageDate)) / (1000 * 60 * 60 * 24) < 7);
             const totalMembers = state.servers.reduce((sum, s) => sum + s.memberCount, 0);
             const avgMembers = Math.round(totalMembers / state.servers.length);
 
@@ -1217,10 +1188,6 @@
                                 <div class="stat-item-value">${ownedServers.length}</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-item-label">Active Servers (7d)</div>
-                                <div class="stat-item-value">${activeServers.length}</div>
-                            </div>
-                            <div class="stat-item">
                                 <div class="stat-item-label">Total Members</div>
                                 <div class="stat-item-value">${totalMembers.toLocaleString()}</div>
                             </div>
@@ -1231,6 +1198,10 @@
                             <div class="stat-item">
                                 <div class="stat-item-label">Large Servers (1000+)</div>
                                 <div class="stat-item-value">${largeServers.length}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Small Servers (<50)</div>
+                                <div class="stat-item-value">${smallServers.length}</div>
                             </div>
                         </div>
 
@@ -1292,64 +1263,35 @@
                     ` : ''}
 
                     <div class="insight-section">
-                        <h3>📈 Activity Analysis</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                            Based on recent message activity across your servers
-                        </p>
-                        <div class="item-stats" style="margin-bottom: 1.5rem;">
-                            <div class="stat-item">
-                                <div class="stat-item-label">Active (Last 7d)</div>
-                                <div class="stat-item-value">${activeServers.length}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Activity Rate</div>
-                                <div class="stat-item-value">${Math.round((activeServers.length / state.servers.length) * 100)}%</div>
-                            </div>
-                        </div>
-
-                        ${activeServers.length > 0 ? `
-                            <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">🔥 Most Active Servers:</h4>
-                            ${activeServers.slice(0, 5).map(s => `
-                                <div style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem;">
-                                    <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
-                                    <div style="color: var(--text-secondary); font-size: 0.85rem;">
-                                        ${s.messagesLast7Days} messages in last 7 days • Last message ${formatDate(s.lastMessageDate)}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        ` : ''}
-                    </div>
-
-                    <div class="insight-section">
-                        <h3>💡 Recommendations</h3>
+                        <h3>💡 Tips & Recommendations</h3>
                         <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
                             <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-primary);">
-                                ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length > 0 
-                                    ? '⚠️ You have inactive servers' 
-                                    : '✅ Your server list looks clean!'}
+                                📌 Declutter Your Server List
                             </div>
                             <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                                ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length > 0
-                                    ? `You haven't been active in ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length} server(s) for over 90 days. Consider leaving them to declutter your server list.`
-                                    : 'You actively participate in most of your servers. Nice job staying engaged!'}
+                                Use the "Select Small Servers" button on the Servers tab to quickly select servers with fewer than 100 members. Review and leave any you no longer need.
                             </div>
-                            ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length > 0 ? `
-                                <button class="btn" onclick="switchTab('servers'); selectInactiveServers();" style="margin-top: 1rem; width: 100%;">
-                                    Go to Servers & Select Inactive
-                                </button>
-                            ` : ''}
                         </div>
 
                         ${largeServers.length > 0 ? `
-                            <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                            <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
                                 <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-secondary);">
                                     💬 You're in ${largeServers.length} large communit${largeServers.length === 1 ? 'y' : 'ies'}
                                 </div>
                                 <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                                    Large servers can be overwhelming. Make sure you're getting value from them!
+                                    Large servers (1000+ members) can have a lot of activity. Consider muting notifications for channels you don't actively follow.
                                 </div>
                             </div>
                         ` : ''}
+
+                        <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                            <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-primary);">
+                                🔮 Future Feature: Activity Tracking
+                            </div>
+                            <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                                Want to see your actual activity data? We're working on a browser extension that will show real message history, last activity timestamps, and more. Stay tuned!
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
