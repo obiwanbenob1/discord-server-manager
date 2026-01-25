@@ -793,19 +793,35 @@
             render();
 
             try {
+                console.log('Starting Discord data fetch...');
+                
                 // Fetch user info
                 const userResponse = await fetch('/api/user', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!userResponse.ok) throw new Error('Failed to fetch user data');
+                console.log('User response status:', userResponse.status);
+                
+                if (!userResponse.ok) {
+                    const errorData = await userResponse.json().catch(() => ({}));
+                    console.error('User fetch failed:', errorData);
+                    throw new Error(`Failed to fetch user data: ${errorData.error || userResponse.statusText}`);
+                }
                 state.user = await userResponse.json();
+                console.log('User fetched successfully:', state.user.username);
 
                 // Fetch guilds
                 const guildsResponse = await fetch('/api/guilds', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!guildsResponse.ok) throw new Error('Failed to fetch servers');
+                console.log('Guilds response status:', guildsResponse.status);
+                
+                if (!guildsResponse.ok) {
+                    const errorData = await guildsResponse.json().catch(() => ({}));
+                    console.error('Guilds fetch failed:', errorData);
+                    throw new Error(`Failed to fetch servers: ${errorData.error || guildsResponse.statusText}`);
+                }
                 state.servers = await guildsResponse.json();
+                console.log(`Successfully fetched ${state.servers.length} servers`);
 
                 // Fetch connections
                 try {
@@ -814,6 +830,7 @@
                     });
                     if (connectionsResponse.ok) {
                         state.connections = await connectionsResponse.json();
+                        console.log(`Fetched ${state.connections.length} connections`);
                     }
                 } catch (e) {
                     console.warn('Failed to fetch connections:', e);
@@ -827,6 +844,7 @@
                 
                 render();
             } catch (error) {
+                console.error('Load Discord data error:', error);
                 state.error = error.message;
                 state.loading = false;
                 localStorage.removeItem('discord_token');
@@ -2333,7 +2351,23 @@
                         <p class="subtitle">Complete Server Management Suite</p>
                     </div>
 
-                    ${state.error ? `<div class="error">${state.error}</div>` : ''}
+                    ${state.error ? `
+                        <div class="error">
+                            <strong>Error:</strong> ${state.error}
+                            <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+                                This could be due to:
+                                • Discord API being temporarily unavailable
+                                • Your token expiring (try logging out and back in)
+                                • Network connectivity issues
+                            </p>
+                            <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 1rem;">
+                                🔄 Retry
+                            </button>
+                            <button class="btn" onclick="handleLogout()" style="margin-top: 1rem;">
+                                🚪 Logout & Re-login
+                            </button>
+                        </div>
+                    ` : ''}
 
                     ${state.user ? `
                         <div class="user-info">
