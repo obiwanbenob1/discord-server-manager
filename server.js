@@ -101,7 +101,7 @@ app.get('/api/guilds', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
 
     try {
-        const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
+        const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds?with_counts=true', {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
