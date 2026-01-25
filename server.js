@@ -147,27 +147,42 @@ app.delete('/api/guilds/:guildId', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
 
     try {
-        await axios.delete(`https://discord.com/api/users/@me/guilds/${guildId}`, {
+        const response = await axios.delete(`https://discord.com/api/users/@me/guilds/${guildId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         });
 
+        console.log('Successfully left guild:', guildId);
         res.json({ success: true, message: `Left guild ${guildId}` });
     } catch (error) {
-        console.error('Leave guild error:', error.response?.data || error.message);
+        console.error('Leave guild error - Full details:');
+        console.error('Status:', error.response?.status);
+        console.error('Data:', JSON.stringify(error.response?.data, null, 2));
+        console.error('Headers:', error.response?.headers);
         
         // Check if it's a permission error
         if (error.response?.status === 403) {
             return res.status(403).json({ 
-                error: 'Permission denied. You may be the server owner or lack permissions to leave.' 
+                error: 'Permission denied. You may be the server owner or lack permissions to leave.',
+                discordError: error.response?.data
             });
         }
         
         // Check if it's a rate limit
         if (error.response?.status === 429) {
             return res.status(429).json({ 
-                error: 'Rate limited. Please wait a moment and try again.' 
+                error: 'Rate limited. Please wait a moment and try again.',
+                discordError: error.response?.data
+            });
+        }
+        
+        // For 401, include Discord's exact error
+        if (error.response?.status === 401) {
+            return res.status(401).json({ 
+                error: '401: Unauthorized',
+                details: error.response?.data,
+                message: 'Discord API returned 401. This may indicate the token lacks proper permissions or has expired.'
             });
         }
         
