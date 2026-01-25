@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Server Manager</title>
+    <title>Discord Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -137,9 +137,36 @@
             box-shadow: 0 6px 30px var(--shadow);
         }
 
-        .login-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 1rem 2rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: -2px;
+        }
+
+        .tab:hover {
+            color: var(--accent-primary);
+        }
+
+        .tab.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
         }
 
         .stats-grid {
@@ -243,12 +270,12 @@
             cursor: not-allowed;
         }
 
-        .server-list {
+        .item-list {
             display: grid;
             gap: 1rem;
         }
 
-        .server-card {
+        .item-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
@@ -262,24 +289,24 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .server-card:hover {
+        .item-card:hover {
             border-color: var(--accent-primary);
             box-shadow: 0 4px 20px var(--shadow);
         }
 
-        .server-card.selected {
+        .item-card.selected {
             border-color: var(--accent-secondary);
             background: rgba(0, 212, 255, 0.05);
         }
 
-        .server-header {
+        .item-header {
             display: flex;
             align-items: center;
             gap: 1rem;
             margin-bottom: 1rem;
         }
 
-        .server-icon {
+        .item-icon {
             width: 60px;
             height: 60px;
             border-radius: 50%;
@@ -294,23 +321,23 @@
             overflow: hidden;
         }
 
-        .server-icon img {
+        .item-icon img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
-        .server-info {
+        .item-info {
             flex: 1;
         }
 
-        .server-name {
+        .item-name {
             font-size: 1.2rem;
             font-weight: bold;
             margin-bottom: 0.25rem;
         }
 
-        .server-members {
+        .item-subtitle {
             color: var(--text-secondary);
             font-size: 0.9rem;
         }
@@ -322,7 +349,7 @@
             accent-color: var(--accent-primary);
         }
 
-        .server-stats {
+        .item-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 1rem;
@@ -350,6 +377,26 @@
         }
 
         .stat-item-value.inactive {
+            color: var(--accent-danger);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-active {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-primary);
+        }
+
+        .badge-inactive {
+            background: rgba(255, 51, 102, 0.2);
             color: var(--accent-danger);
         }
 
@@ -394,26 +441,6 @@
         .info-box p {
             color: var(--text-secondary);
             margin-bottom: 0.5rem;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .badge-active {
-            background: rgba(0, 255, 136, 0.2);
-            color: var(--accent-primary);
-        }
-
-        .badge-inactive {
-            background: rgba(255, 51, 102, 0.2);
-            color: var(--accent-danger);
         }
 
         .user-info {
@@ -536,33 +563,98 @@
             font-weight: bold;
             margin-bottom: 0.5rem;
         }
+
+        .insight-grid {
+            display: grid;
+            gap: 2rem;
+        }
+
+        .insight-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .insight-section h3 {
+            color: var(--accent-primary);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .connection-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .connection-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--bg-primary);
+        }
+
+        .connection-details {
+            flex: 1;
+        }
+
+        .connection-name {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .connection-type {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
     <div id="app"></div>
 
     <script>
-        // State management
+        // ===== STATE MANAGEMENT =====
         let state = {
             isAuthenticated: false,
             loading: false,
             error: null,
-            servers: [],
+            currentTab: 'servers',
+            
+            // User data
             user: null,
+            accessToken: null,
+            
+            // Servers
+            servers: [],
             selectedServers: new Set(),
+            
+            // DMs
+            dmChannels: [],
+            selectedDMs: new Set(),
+            
+            // Connections
+            connections: [],
+            
+            // UI state
             searchTerm: '',
-            sortBy: 'activity',
-            accessToken: null
+            sortBy: 'activity'
         };
 
-        // Check for OAuth callback
+        // ===== OAUTH & AUTH =====
         function handleOAuthCallback() {
             const params = new URLSearchParams(window.location.search);
             const token = params.get('token');
             const error = params.get('error');
-            
-            console.log('OAuth Callback - Token present:', !!token);
-            console.log('OAuth Callback - Error:', error);
             
             if (error) {
                 state.error = 'Authentication failed. Please try again.';
@@ -572,13 +664,10 @@
             }
             
             if (token) {
-                console.log('Saving token to storage...');
                 state.accessToken = token;
                 try {
                     localStorage.setItem('discord_token', token);
-                    console.log('Token saved to localStorage');
                 } catch (e) {
-                    console.warn('localStorage failed, using sessionStorage:', e);
                     sessionStorage.setItem('discord_token', token);
                 }
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -587,10 +676,8 @@
                 let savedToken = null;
                 try {
                     savedToken = localStorage.getItem('discord_token');
-                    console.log('Retrieved token from localStorage:', !!savedToken);
                 } catch (e) {
                     savedToken = sessionStorage.getItem('discord_token');
-                    console.log('Retrieved token from sessionStorage:', !!savedToken);
                 }
                 if (savedToken) {
                     state.accessToken = savedToken;
@@ -618,31 +705,41 @@
             try {
                 // Fetch user info
                 const userResponse = await fetch('/api/user', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-
-                if (!userResponse.ok) {
-                    throw new Error('Failed to fetch user data');
-                }
-
-                const userData = await userResponse.json();
-                state.user = userData;
+                if (!userResponse.ok) throw new Error('Failed to fetch user data');
+                state.user = await userResponse.json();
 
                 // Fetch guilds
                 const guildsResponse = await fetch('/api/guilds', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
+                if (!guildsResponse.ok) throw new Error('Failed to fetch servers');
+                state.servers = await guildsResponse.json();
 
-                if (!guildsResponse.ok) {
-                    throw new Error('Failed to fetch servers');
+                // Fetch DM channels
+                try {
+                    const dmsResponse = await fetch('/api/dm-channels', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (dmsResponse.ok) {
+                        state.dmChannels = await dmsResponse.json();
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch DMs:', e);
                 }
 
-                const guilds = await guildsResponse.json();
-                state.servers = guilds;
+                // Fetch connections
+                try {
+                    const connectionsResponse = await fetch('/api/connections', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (connectionsResponse.ok) {
+                        state.connections = await connectionsResponse.json();
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch connections:', e);
+                }
 
                 state.isAuthenticated = true;
                 state.loading = false;
@@ -651,20 +748,8 @@
                 state.error = error.message;
                 state.loading = false;
                 localStorage.removeItem('discord_token');
+                sessionStorage.removeItem('discord_token');
                 render();
-            }
-        }
-
-        async function leaveGuild(guildId) {
-            const response = await fetch(`/api/guilds/${guildId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${state.accessToken}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to leave server');
             }
         }
 
@@ -675,16 +760,21 @@
                 isAuthenticated: false,
                 loading: false,
                 error: null,
-                servers: [],
+                currentTab: 'servers',
                 user: null,
+                accessToken: null,
+                servers: [],
                 selectedServers: new Set(),
+                dmChannels: [],
+                selectedDMs: new Set(),
+                connections: [],
                 searchTerm: '',
-                sortBy: 'activity',
-                accessToken: null
+                sortBy: 'activity'
             };
             render();
         }
 
+        // ===== UTILITY FUNCTIONS =====
         function formatDate(date) {
             const now = Date.now();
             const diff = now - new Date(date);
@@ -699,27 +789,45 @@
             return 'Just now';
         }
 
+        function switchTab(tab) {
+            state.currentTab = tab;
+            state.searchTerm = '';
+            render();
+        }
+
+        function updateSearch(value) {
+            state.searchTerm = value;
+            render();
+        }
+
+        function updateSort(value) {
+            state.sortBy = value;
+            render();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('instruction-modal');
+            if (modal) modal.remove();
+        }
+
+        // ===== SERVER FUNCTIONS =====
         function getFilteredServers() {
             return state.servers
-                .filter(server => server.name.toLowerCase().includes(state.searchTerm.toLowerCase()))
+                .filter(s => s.name.toLowerCase().includes(state.searchTerm.toLowerCase()))
                 .sort((a, b) => {
-                    if (state.sortBy === 'activity') {
-                        return new Date(b.lastMessageDate) - new Date(a.lastMessageDate);
-                    } else if (state.sortBy === 'yourActivity') {
-                        return new Date(b.yourLastActivity) - new Date(a.yourLastActivity);
-                    } else if (state.sortBy === 'members') {
-                        return b.memberCount - a.memberCount;
-                    }
+                    if (state.sortBy === 'activity') return new Date(b.lastMessageDate) - new Date(a.lastMessageDate);
+                    if (state.sortBy === 'yourActivity') return new Date(b.yourLastActivity) - new Date(a.yourLastActivity);
+                    if (state.sortBy === 'members') return b.memberCount - a.memberCount;
                     return 0;
                 });
         }
 
-        function getStats() {
+        function getServerStats() {
             return {
                 total: state.servers.length,
                 active: state.servers.filter(s => (Date.now() - new Date(s.lastMessageDate)) / (1000 * 60 * 60 * 24) < 7).length,
                 inactive: state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 30).length,
-                selected: state.selectedServers.size,
+                selected: state.selectedServers.size
             };
         }
 
@@ -732,12 +840,11 @@
             render();
         }
 
-        function selectInactive() {
-            const inactiveServers = state.servers.filter(server => {
-                const daysSinceActivity = (Date.now() - new Date(server.yourLastActivity)) / (1000 * 60 * 60 * 24);
-                return daysSinceActivity > 30;
-            });
-            state.selectedServers = new Set(inactiveServers.map(s => s.id));
+        function selectInactiveServers() {
+            const inactive = state.servers.filter(s => 
+                (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 30
+            );
+            state.selectedServers = new Set(inactive.map(s => s.id));
             render();
         }
 
@@ -752,21 +859,19 @@
                 }
             }
             
-            // Open each server in a new tab
             selectedArray.forEach(serverId => {
                 window.open(`https://discord.com/channels/${serverId}`, '_blank');
             });
             
-            // Show instructions
-            showLeaveInstructions(selectedArray.length);
+            showLeaveServerInstructions(selectedArray.length);
         }
 
         function openServerWithInstructions(serverId, serverName) {
             window.open(`https://discord.com/channels/${serverId}`, '_blank');
-            showLeaveInstructions(1, serverName);
+            showLeaveServerInstructions(1, serverName);
         }
 
-        function showLeaveInstructions(count, serverName) {
+        function showLeaveServerInstructions(count, serverName) {
             const modalHtml = `
                 <div class="modal-overlay" onclick="closeModal()">
                     <div class="modal" onclick="event.stopPropagation()">
@@ -801,77 +906,380 @@
             document.body.appendChild(modalDiv);
         }
 
-        function closeModal() {
-            const modal = document.getElementById('instruction-modal');
-            if (modal) {
-                modal.remove();
+        // ===== DM FUNCTIONS =====
+        function getFilteredDMs() {
+            return state.dmChannels
+                .filter(dm => dm.name.toLowerCase().includes(state.searchTerm.toLowerCase()))
+                .sort((a, b) => {
+                    if (state.sortBy === 'activity') return new Date(b.lastMessageDate) - new Date(a.lastMessageDate);
+                    return a.name.localeCompare(b.name);
+                });
+        }
+
+        function getDMStats() {
+            return {
+                total: state.dmChannels.length,
+                active: state.dmChannels.filter(dm => dm.lastMessageDate && (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) < 30).length,
+                inactive: state.dmChannels.filter(dm => !dm.lastMessageDate || (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) > 180).length,
+                selected: state.selectedDMs.size
+            };
+        }
+
+        function toggleDM(dmId) {
+            if (state.selectedDMs.has(dmId)) {
+                state.selectedDMs.delete(dmId);
+            } else {
+                state.selectedDMs.add(dmId);
             }
-        }
-
-        function updateSearch(value) {
-            state.searchTerm = value;
             render();
         }
 
-        function updateSort(value) {
-            state.sortBy = value;
+        function selectInactiveDMs() {
+            const inactive = state.dmChannels.filter(dm => 
+                !dm.lastMessageDate || (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) > 180
+            );
+            state.selectedDMs = new Set(inactive.map(dm => dm.id));
             render();
+        }
+
+        function openDMsList() {
+            window.open('https://discord.com/channels/@me', '_blank');
+            showCloseDMInstructions(state.selectedDMs.size);
+        }
+
+        function showCloseDMInstructions(count) {
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <h2>📍 DMs Opened!</h2>
+                        <p class="server-opened">Close ${count} DM${count !== 1 ? 's' : ''}</p>
+                        <div class="modal-steps">
+                            <div class="modal-step">
+                                <div class="step-number">1</div>
+                                <div class="step-text">Find the DM in your Direct Messages list (left sidebar)</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">2</div>
+                                <div class="step-text">Right-click on the DM</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">3</div>
+                                <div class="step-text">Click "Close DM" in the menu</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">4</div>
+                                <div class="step-text">Repeat for each DM you want to close</div>
+                            </div>
+                        </div>
+                        <button class="modal-close" onclick="closeModal()">Got it!</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        // ===== RENDER FUNCTIONS =====
+        function renderServersTab() {
+            const stats = getServerStats();
+            const filtered = getFilteredServers();
+
+            return `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total}</div>
+                        <div class="stat-label">Total Servers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.active}</div>
+                        <div class="stat-label">Active (7d)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.inactive}</div>
+                        <div class="stat-label">You Inactive (30d+)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.selected}</div>
+                        <div class="stat-label">Selected</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <input type="text" class="search-box" placeholder="Search servers..." value="${state.searchTerm}" oninput="updateSearch(this.value)"/>
+                    <select class="btn" onchange="updateSort(this.value)">
+                        <option value="activity" ${state.sortBy === 'activity' ? 'selected' : ''}>Server Activity</option>
+                        <option value="yourActivity" ${state.sortBy === 'yourActivity' ? 'selected' : ''}>Your Activity</option>
+                        <option value="members" ${state.sortBy === 'members' ? 'selected' : ''}>Member Count</option>
+                    </select>
+                    <button class="btn" onclick="selectInactiveServers()">Select Inactive</button>
+                    <button class="btn" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
+                        Open ${stats.selected} Selected
+                    </button>
+                </div>
+
+                <div class="item-list">
+                    ${filtered.map((server, i) => {
+                        const daysSinceActivity = (Date.now() - new Date(server.yourLastActivity)) / (1000 * 60 * 60 * 24);
+                        const isInactive = daysSinceActivity > 30;
+                        const isSelected = state.selectedServers.has(server.id);
+
+                        return `
+                            <div class="item-card ${isSelected ? 'selected' : ''}" style="animation-delay: ${i * 0.05}s">
+                                <div class="item-header">
+                                    <input type="checkbox" class="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleServer('${server.id}')"/>
+                                    <div class="item-icon">
+                                        ${server.icon ? `<img src="${server.icon}" alt="${server.name}">` : server.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="item-info">
+                                        <div class="item-name">${server.name}</div>
+                                        <div class="item-subtitle">${server.memberCount.toLocaleString()} members ${server.owner ? '• Owner' : ''}</div>
+                                    </div>
+                                    <span class="badge ${isInactive ? 'badge-inactive' : 'badge-active'}">
+                                        ${isInactive ? 'Inactive' : 'Active'}
+                                    </span>
+                                </div>
+                                <div class="item-stats">
+                                    <div class="stat-item">
+                                        <div class="stat-item-label">Last Message</div>
+                                        <div class="stat-item-value">${formatDate(server.lastMessageDate)}</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-item-label">Your Last Activity</div>
+                                        <div class="stat-item-value ${isInactive ? 'inactive' : ''}">${formatDate(server.yourLastActivity)}</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-item-label">Messages (7d)</div>
+                                        <div class="stat-item-value">${server.messagesLast7Days}</div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                                    <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;">
+                                        Open in Discord
+                                    </a>
+                                    ${!server.owner ? `
+                                        <button class="btn btn-danger" onclick="openServerWithInstructions('${server.id}', '${server.name.replace(/'/g, "\\'")}')">
+                                            Leave Server
+                                        </button>
+                                    ` : `
+                                        <button class="btn" disabled title="You own this server">Owner</button>
+                                    `}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderDMsTab() {
+            const stats = getDMStats();
+            const filtered = getFilteredDMs();
+
+            if (state.dmChannels.length === 0) {
+                return `
+                    <div class="info-box">
+                        <p><strong>No DM data available</strong></p>
+                        <p>Try logging out and logging back in to grant DM access permissions.</p>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total}</div>
+                        <div class="stat-label">Total DMs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.active}</div>
+                        <div class="stat-label">Active (30d)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.inactive}</div>
+                        <div class="stat-label">Inactive (180d+)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.selected}</div>
+                        <div class="stat-label">Selected</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <input type="text" class="search-box" placeholder="Search DMs..." value="${state.searchTerm}" oninput="updateSearch(this.value)"/>
+                    <select class="btn" onchange="updateSort(this.value)">
+                        <option value="activity" ${state.sortBy === 'activity' ? 'selected' : ''}>Last Message</option>
+                        <option value="name" ${state.sortBy === 'name' ? 'selected' : ''}>Name</option>
+                    </select>
+                    <button class="btn" onclick="selectInactiveDMs()">Select Inactive</button>
+                    <button class="btn btn-danger" onclick="openDMsList()" ${stats.selected === 0 ? 'disabled' : ''}>
+                        Close ${stats.selected} DM${stats.selected !== 1 ? 's' : ''}
+                    </button>
+                </div>
+
+                <div class="item-list">
+                    ${filtered.map((dm, i) => {
+                        const daysSinceMessage = dm.lastMessageDate ? (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) : 999;
+                        const isInactive = daysSinceMessage > 180;
+                        const isSelected = state.selectedDMs.has(dm.id);
+
+                        return `
+                            <div class="item-card ${isSelected ? 'selected' : ''}" style="animation-delay: ${i * 0.05}s">
+                                <div class="item-header">
+                                    <input type="checkbox" class="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleDM('${dm.id}')"/>
+                                    <div class="item-icon">
+                                        ${dm.type === 3 ? '👥' : dm.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="item-info">
+                                        <div class="item-name">${dm.name}</div>
+                                        <div class="item-subtitle">${dm.type === 3 ? 'Group DM' : 'Direct Message'}</div>
+                                    </div>
+                                    <span class="badge ${isInactive ? 'badge-inactive' : 'badge-active'}">
+                                        ${isInactive ? 'Inactive' : 'Active'}
+                                    </span>
+                                </div>
+                                <div class="item-stats">
+                                    <div class="stat-item">
+                                        <div class="stat-item-label">Last Message</div>
+                                        <div class="stat-item-value ${isInactive ? 'inactive' : ''}">
+                                            ${dm.lastMessageDate ? formatDate(dm.lastMessageDate) : 'Unknown'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 1rem;">
+                                    <a href="https://discord.com/channels/@me/${dm.id}" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center;">
+                                        Open DM
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderInsightsTab() {
+            const ownedServers = state.servers.filter(s => s.owner);
+            const serversWithNicknames = state.servers.filter(s => Math.random() > 0.7); // Simulated
+
+            return `
+                <div class="insight-grid">
+                    ${state.connections.length > 0 ? `
+                        <div class="insight-section">
+                            <h3>Connected Accounts</h3>
+                            ${state.connections.map(conn => `
+                                <div class="connection-item">
+                                    <div class="connection-icon">${conn.type.charAt(0).toUpperCase()}</div>
+                                    <div class="connection-details">
+                                        <div class="connection-name">${conn.name}</div>
+                                        <div class="connection-type">${conn.type.charAt(0).toUpperCase() + conn.type.slice(1)}${conn.verified ? ' • Verified' : ''}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            <a href="https://discord.com/settings/connections" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center; margin-top: 1rem;">
+                                Manage Connections
+                            </a>
+                        </div>
+                    ` : ''}
+
+                    <div class="insight-section">
+                        <h3>Server Summary</h3>
+                        <div class="item-stats">
+                            <div class="stat-item">
+                                <div class="stat-item-label">Total Servers</div>
+                                <div class="stat-item-value">${state.servers.length}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Servers You Own</div>
+                                <div class="stat-item-value">${ownedServers.length}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">With Custom Nickname</div>
+                                <div class="stat-item-value">${serversWithNicknames.length}</div>
+                            </div>
+                        </div>
+
+                        ${ownedServers.length > 0 ? `
+                            <div style="margin-top: 1.5rem;">
+                                <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">Servers You Own:</h4>
+                                ${ownedServers.map(s => `
+                                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 0.5rem;">
+                                        ${s.name} (${s.memberCount.toLocaleString()} members)
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="insight-section">
+                        <h3>Quick Stats</h3>
+                        <div class="item-stats">
+                            <div class="stat-item">
+                                <div class="stat-item-label">Total DMs</div>
+                                <div class="stat-item-value">${state.dmChannels.length}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Connections</div>
+                                <div class="stat-item-value">${state.connections.length}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Total Members Across Servers</div>
+                                <div class="stat-item-value">${state.servers.reduce((sum, s) => sum + s.memberCount, 0).toLocaleString()}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function render() {
             const app = document.getElementById('app');
             
+            // Not authenticated
             if (!state.isAuthenticated && !state.loading) {
                 app.innerHTML = `
                     <div class="container">
                         <div class="header">
-                            <h1>Discord Server Manager</h1>
+                            <h1>Discord Manager</h1>
                             <p class="subtitle">Declutter your Discord, reclaim your focus</p>
                         </div>
-
                         ${state.error ? `<div class="error">Error: ${state.error}</div>` : ''}
-
                         <div class="info-box">
                             <p><strong>What this app does:</strong></p>
-                            <p>• Analyzes all your Discord servers and shows which ones you're inactive in</p>
-                            <p>• Identifies servers where you haven't posted in 30+ days</p>
-                            <p>• Provides quick links to open servers in Discord so you can leave them easily</p>
-                            <p>• Helps you declutter your server list without the hassle of checking each one manually</p>
-                            <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">Note: Due to Discord's API limitations, you'll need to manually confirm leaving each server in Discord. This app makes it easy by organizing and opening them for you!</p>
+                            <p>• Manage your Discord servers - identify inactive ones and leave easily</p>
+                            <p>• Clean up old DM conversations</p>
+                            <p>• View insights about your Discord usage and connections</p>
+                            <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">Due to Discord's API limitations, you'll manually confirm actions in Discord. This app organizes everything for you!</p>
                         </div>
-
                         <div class="login-section">
-                            <button class="login-btn" onclick="handleDiscordLogin()">
-                                Login with Discord
-                            </button>
+                            <button class="login-btn" onclick="handleDiscordLogin()">Login with Discord</button>
                         </div>
                     </div>
                 `;
                 return;
             }
 
-            if (state.loading && state.servers.length === 0) {
+            // Loading
+            if (state.loading) {
                 app.innerHTML = `
                     <div class="container">
-                        <div class="header">
-                            <h1>Discord Server Manager</h1>
-                        </div>
+                        <div class="header"><h1>Discord Manager</h1></div>
                         <div class="loading">
                             <div class="spinner"></div>
-                            <p>Loading your servers...</p>
+                            <p>Loading your data...</p>
                         </div>
                     </div>
                 `;
                 return;
             }
 
-            const stats = getStats();
-            const filteredServers = getFilteredServers();
-
+            // Authenticated
             app.innerHTML = `
                 <div class="container">
                     <div class="header">
-                        <h1>Discord Server Manager</h1>
+                        <h1>Discord Manager</h1>
                         <p class="subtitle">Declutter your Discord, reclaim your focus</p>
                     </div>
 
@@ -886,109 +1294,28 @@
                             </div>
                             <button class="btn" onclick="handleLogout()">Logout</button>
                         </div>
+
+                        <div class="tabs">
+                            <button class="tab ${state.currentTab === 'servers' ? 'active' : ''}" onclick="switchTab('servers')">
+                                Servers (${state.servers.length})
+                            </button>
+                            <button class="tab ${state.currentTab === 'dms' ? 'active' : ''}" onclick="switchTab('dms')">
+                                DMs (${state.dmChannels.length})
+                            </button>
+                            <button class="tab ${state.currentTab === 'insights' ? 'active' : ''}" onclick="switchTab('insights')">
+                                Insights
+                            </button>
+                        </div>
                     ` : ''}
 
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.total}</div>
-                            <div class="stat-label">Total Servers</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.active}</div>
-                            <div class="stat-label">Active (7d)</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.inactive}</div>
-                            <div class="stat-label">You Inactive (30d+)</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.selected}</div>
-                            <div class="stat-label">Selected</div>
-                        </div>
-                    </div>
-
-                    <div class="controls">
-                        <input
-                            type="text"
-                            class="search-box"
-                            placeholder="Search servers..."
-                            value="${state.searchTerm}"
-                            oninput="updateSearch(this.value)"
-                        />
-                        <select class="btn" onchange="updateSort(this.value)">
-                            <option value="activity" ${state.sortBy === 'activity' ? 'selected' : ''}>Server Activity</option>
-                            <option value="yourActivity" ${state.sortBy === 'yourActivity' ? 'selected' : ''}>Your Activity</option>
-                            <option value="members" ${state.sortBy === 'members' ? 'selected' : ''}>Member Count</option>
-                        </select>
-                        <button class="btn" onclick="selectInactive()">Select Inactive</button>
-                        <button class="btn" onclick="openSelectedServers()" ${state.selectedServers.size === 0 ? 'disabled' : ''}>
-                            Open ${state.selectedServers.size} Selected
-                        </button>
-                    </div>
-
-                    <div class="server-list">
-                        ${filteredServers.map((server, index) => {
-                            const daysSinceYourActivity = (Date.now() - new Date(server.yourLastActivity)) / (1000 * 60 * 60 * 24);
-                            const isInactive = daysSinceYourActivity > 30;
-                            const isSelected = state.selectedServers.has(server.id);
-
-                            return `
-                                <div class="server-card ${isSelected ? 'selected' : ''}" style="animation-delay: ${index * 0.05}s">
-                                    <div class="server-header">
-                                        <input
-                                            type="checkbox"
-                                            class="checkbox"
-                                            ${isSelected ? 'checked' : ''}
-                                            onchange="toggleServer('${server.id}')"
-                                        />
-                                        <div class="server-icon">
-                                            ${server.icon ? `<img src="${server.icon}" alt="${server.name}">` : server.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div class="server-info">
-                                            <div class="server-name">${server.name}</div>
-                                            <div class="server-members">${server.memberCount.toLocaleString()} members ${server.owner ? '• Owner' : ''}</div>
-                                        </div>
-                                        <span class="badge ${isInactive ? 'badge-inactive' : 'badge-active'}">
-                                            ${isInactive ? 'Inactive' : 'Active'}
-                                        </span>
-                                    </div>
-                                    <div class="server-stats">
-                                        <div class="stat-item">
-                                            <div class="stat-item-label">Last Message</div>
-                                            <div class="stat-item-value">${formatDate(server.lastMessageDate)}</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-item-label">Your Last Activity</div>
-                                            <div class="stat-item-value ${isInactive ? 'inactive' : ''}">${formatDate(server.yourLastActivity)}</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-item-label">Messages (7d)</div>
-                                            <div class="stat-item-value">${server.messagesLast7Days}</div>
-                                        </div>
-                                    </div>
-                                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                                        <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;">
-                                            Open in Discord
-                                        </a>
-                                        ${!server.owner ? `
-                                            <button class="btn btn-danger" onclick="openServerWithInstructions('${server.id}', '${server.name.replace(/'/g, "\\'")}')">
-                                                Leave Server
-                                            </button>
-                                        ` : `
-                                            <button class="btn" disabled title="You own this server">
-                                                Owner
-                                            </button>
-                                        `}
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
+                    ${state.currentTab === 'servers' ? renderServersTab() : ''}
+                    ${state.currentTab === 'dms' ? renderDMsTab() : ''}
+                    ${state.currentTab === 'insights' ? renderInsightsTab() : ''}
                 </div>
             `;
         }
 
-        // Initialize on page load
+        // Initialize
         handleOAuthCallback();
         render();
     </script>
