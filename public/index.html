@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Manager</title>
+    <title>Discord Manager - Complete Suite</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -13,6 +13,7 @@
             --accent-primary: #00ff88;
             --accent-secondary: #00d4ff;
             --accent-danger: #ff3366;
+            --accent-warning: #ffaa00;
             --text-primary: #e8f4f8;
             --text-secondary: #8b9dc3;
             --border: #2a3354;
@@ -142,15 +143,16 @@
             gap: 1rem;
             margin-bottom: 2rem;
             border-bottom: 2px solid var(--border);
+            flex-wrap: wrap;
         }
 
         .tab {
             background: none;
             border: none;
             color: var(--text-secondary);
-            padding: 1rem 2rem;
+            padding: 1rem 1.5rem;
             font-family: 'Space Mono', monospace;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: bold;
             cursor: pointer;
             text-transform: uppercase;
@@ -171,7 +173,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1.5rem;
             margin-bottom: 3rem;
             animation: fadeIn 0.8s ease-out;
@@ -201,7 +203,7 @@
 
         .stat-label {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-top: 0.5rem;
@@ -246,11 +248,23 @@
             transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            white-space: nowrap;
         }
 
         .btn:hover {
             border-color: var(--accent-primary);
             background: var(--bg-secondary);
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
         }
 
         .btn-danger {
@@ -349,37 +363,6 @@
             accent-color: var(--accent-primary);
         }
 
-        .item-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .stat-item-label {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-item-value {
-            font-weight: bold;
-            color: var(--accent-primary);
-        }
-
-        .stat-item-value.inactive {
-            color: var(--accent-danger);
-        }
-
         .badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -388,16 +371,27 @@
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            margin-right: 0.5rem;
         }
 
-        .badge-active {
+        .badge-primary {
             background: rgba(0, 255, 136, 0.2);
             color: var(--accent-primary);
         }
 
-        .badge-inactive {
+        .badge-secondary {
+            background: rgba(0, 212, 255, 0.2);
+            color: var(--accent-secondary);
+        }
+
+        .badge-danger {
             background: rgba(255, 51, 102, 0.2);
             color: var(--accent-danger);
+        }
+
+        .badge-warning {
+            background: rgba(255, 170, 0, 0.2);
+            color: var(--accent-warning);
         }
 
         .loading {
@@ -489,8 +483,10 @@
             border: 2px solid var(--accent-primary);
             border-radius: 12px;
             padding: 2rem;
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0, 255, 136, 0.3);
             animation: slideUp 0.3s ease-out;
         }
@@ -617,13 +613,52 @@
             color: var(--text-secondary);
             font-size: 0.9rem;
         }
+
+        .category-filter {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .category-chip {
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .category-chip:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .category-chip.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .warning-box {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid var(--accent-warning);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .warning-box strong {
+            color: var(--accent-warning);
+        }
     </style>
 </head>
 <body>
     <div id="app"></div>
 
     <script>
-        // ===== STATE MANAGEMENT =====
+        // ===== GLOBAL STATE =====
         let state = {
             isAuthenticated: false,
             loading: false,
@@ -638,17 +673,33 @@
             servers: [],
             selectedServers: new Set(),
             
-            // DMs
-            dmChannels: [],
-            selectedDMs: new Set(),
-            
             // Connections
             connections: [],
             
             // UI state
             searchTerm: '',
-            sortBy: 'activity'
+            sortBy: 'name',
+            categoryFilter: 'all', // all, gaming, personal, work, large, owned
+            
+            // Growth tracking (stored in localStorage)
+            growthHistory: {}, // { serverId: [{ date, memberCount }] }
+            lastSnapshot: null,
+            
+            // Multi-account (future feature)
+            accounts: []
         };
+
+        // ===== INITIALIZATION =====
+        function init() {
+            loadGrowthHistory();
+            handleOAuthCallback();
+            render();
+            
+            // Take snapshot on login
+            if (state.isAuthenticated) {
+                takeServerSnapshot();
+            }
+        }
 
         // ===== OAUTH & AUTH =====
         function handleOAuthCallback() {
@@ -717,18 +768,6 @@
                 if (!guildsResponse.ok) throw new Error('Failed to fetch servers');
                 state.servers = await guildsResponse.json();
 
-                // Fetch DM channels
-                try {
-                    const dmsResponse = await fetch('/api/dm-channels', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (dmsResponse.ok) {
-                        state.dmChannels = await dmsResponse.json();
-                    }
-                } catch (e) {
-                    console.warn('Failed to fetch DMs:', e);
-                }
-
                 // Fetch connections
                 try {
                     const connectionsResponse = await fetch('/api/connections', {
@@ -743,6 +782,10 @@
 
                 state.isAuthenticated = true;
                 state.loading = false;
+                
+                // Take growth snapshot
+                takeServerSnapshot();
+                
                 render();
             } catch (error) {
                 state.error = error.message;
@@ -765,13 +808,210 @@
                 accessToken: null,
                 servers: [],
                 selectedServers: new Set(),
-                dmChannels: [],
-                selectedDMs: new Set(),
                 connections: [],
                 searchTerm: '',
-                sortBy: 'activity'
+                sortBy: 'name',
+                categoryFilter: 'all',
+                growthHistory: state.growthHistory, // Keep growth history
+                lastSnapshot: state.lastSnapshot,
+                accounts: []
             };
             render();
+        }
+
+        // ===== GROWTH TRACKING =====
+        function loadGrowthHistory() {
+            try {
+                const saved = localStorage.getItem('discord_growth_history');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    state.growthHistory = data.history || {};
+                    state.lastSnapshot = data.lastSnapshot || null;
+                }
+            } catch (e) {
+                console.warn('Failed to load growth history:', e);
+            }
+        }
+
+        function saveGrowthHistory() {
+            try {
+                localStorage.setItem('discord_growth_history', JSON.stringify({
+                    history: state.growthHistory,
+                    lastSnapshot: state.lastSnapshot
+                }));
+            } catch (e) {
+                console.warn('Failed to save growth history:', e);
+            }
+        }
+
+        function takeServerSnapshot() {
+            const now = Date.now();
+            const oneDayAgo = now - (24 * 60 * 60 * 1000);
+            
+            // Only take snapshot once per day
+            if (state.lastSnapshot && state.lastSnapshot > oneDayAgo) {
+                return;
+            }
+            
+            state.servers.forEach(server => {
+                if (!state.growthHistory[server.id]) {
+                    state.growthHistory[server.id] = [];
+                }
+                
+                state.growthHistory[server.id].push({
+                    date: now,
+                    memberCount: server.memberCount
+                });
+                
+                // Keep only last 90 days
+                const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+                state.growthHistory[server.id] = state.growthHistory[server.id].filter(
+                    snapshot => snapshot.date > ninetyDaysAgo
+                );
+            });
+            
+            state.lastSnapshot = now;
+            saveGrowthHistory();
+        }
+
+        function getServerGrowth(serverId) {
+            const history = state.growthHistory[serverId] || [];
+            if (history.length < 2) return null;
+            
+            const latest = history[history.length - 1];
+            const oldest = history[0];
+            const change = latest.memberCount - oldest.memberCount;
+            const percentChange = ((change / oldest.memberCount) * 100).toFixed(1);
+            
+            return {
+                change,
+                percentChange,
+                trending: change > 0 ? 'up' : change < 0 ? 'down' : 'stable',
+                dataPoints: history.length
+            };
+        }
+
+        // ===== SERVER CATEGORIZATION =====
+        function categorizeServer(server) {
+            const categories = [];
+            
+            // Size-based
+            if (server.owner) categories.push('owned');
+            if (server.memberCount > 1000) categories.push('large');
+            if (server.memberCount < 50) categories.push('personal');
+            
+            // Name-based heuristics
+            const nameLower = server.name.toLowerCase();
+            if (nameLower.match(/game|gaming|clan|guild|esport/)) categories.push('gaming');
+            if (nameLower.match(/work|team|company|corp|business/)) categories.push('work');
+            if (nameLower.match(/study|learn|school|university|education/)) categories.push('education');
+            if (nameLower.match(/art|creative|design|music/)) categories.push('creative');
+            
+            return categories.length > 0 ? categories : ['other'];
+        }
+
+        // ===== DUPLICATE DETECTION =====
+        function findDuplicateServers() {
+            const duplicates = [];
+            const seen = new Map();
+            
+            state.servers.forEach(server => {
+                const nameLower = server.name.toLowerCase().trim();
+                
+                if (seen.has(nameLower)) {
+                    duplicates.push({
+                        server1: seen.get(nameLower),
+                        server2: server
+                    });
+                } else {
+                    seen.set(nameLower, server);
+                }
+            });
+            
+            return duplicates;
+        }
+
+        // ===== PERMISSION ANALYSIS =====
+        function analyzePermissions(server) {
+            const perms = parseInt(server.permissions);
+            const risks = [];
+            
+            // Check for admin permission (0x8)
+            if ((perms & 0x8) === 0x8) {
+                risks.push({ level: 'high', text: 'Administrator' });
+            }
+            
+            // Check for manage server (0x20)
+            if ((perms & 0x20) === 0x20) {
+                risks.push({ level: 'medium', text: 'Manage Server' });
+            }
+            
+            // Check for manage roles (0x10000000)
+            if ((perms & 0x10000000) === 0x10000000) {
+                risks.push({ level: 'medium', text: 'Manage Roles' });
+            }
+            
+            // Check for manage channels (0x10)
+            if ((perms & 0x10) === 0x10) {
+                risks.push({ level: 'low', text: 'Manage Channels' });
+            }
+            
+            return risks;
+        }
+
+        // ===== EXPORT FUNCTIONALITY =====
+        function exportToCSV() {
+            const headers = ['Server Name', 'Members', 'Owner', 'Categories', 'Member Growth'];
+            const rows = state.servers.map(server => {
+                const categories = categorizeServer(server).join('; ');
+                const growth = getServerGrowth(server.id);
+                const growthStr = growth ? `${growth.change} (${growth.percentChange}%)` : 'No data';
+                
+                return [
+                    server.name,
+                    server.memberCount,
+                    server.owner ? 'Yes' : 'No',
+                    categories,
+                    growthStr
+                ];
+            });
+            
+            const csv = [headers, ...rows]
+                .map(row => row.map(cell => `"${cell}"`).join(','))
+                .join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `discord-servers-${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportToJSON() {
+            const data = {
+                exportDate: new Date().toISOString(),
+                user: state.user.username,
+                servers: state.servers.map(server => ({
+                    name: server.name,
+                    id: server.id,
+                    memberCount: server.memberCount,
+                    owner: server.owner,
+                    categories: categorizeServer(server),
+                    growth: getServerGrowth(server.id)
+                })),
+                connections: state.connections,
+                totalServers: state.servers.length
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `discord-data-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         // ===== UTILITY FUNCTIONS =====
@@ -805,6 +1045,11 @@
             render();
         }
 
+        function updateCategoryFilter(category) {
+            state.categoryFilter = category;
+            render();
+        }
+
         function closeModal() {
             const modal = document.getElementById('instruction-modal');
             if (modal) modal.remove();
@@ -812,20 +1057,40 @@
 
         // ===== SERVER FUNCTIONS =====
         function getFilteredServers() {
-            return state.servers
-                .filter(s => s.name.toLowerCase().includes(state.searchTerm.toLowerCase()))
-                .sort((a, b) => {
-                    if (state.sortBy === 'members') return b.memberCount - a.memberCount;
-                    if (state.sortBy === 'name') return a.name.localeCompare(b.name);
-                    return 0;
-                });
+            let filtered = state.servers.filter(s => 
+                s.name.toLowerCase().includes(state.searchTerm.toLowerCase())
+            );
+            
+            // Category filter
+            if (state.categoryFilter !== 'all') {
+                filtered = filtered.filter(s => 
+                    categorizeServer(s).includes(state.categoryFilter)
+                );
+            }
+            
+            // Sort
+            return filtered.sort((a, b) => {
+                if (state.sortBy === 'members') return b.memberCount - a.memberCount;
+                if (state.sortBy === 'name') return a.name.localeCompare(b.name);
+                if (state.sortBy === 'growth') {
+                    const growthA = getServerGrowth(a.id);
+                    const growthB = getServerGrowth(b.id);
+                    if (!growthA && !growthB) return 0;
+                    if (!growthA) return 1;
+                    if (!growthB) return -1;
+                    return growthB.change - growthA.change;
+                }
+                return 0;
+            });
         }
 
         function getServerStats() {
             return {
                 total: state.servers.length,
                 owned: state.servers.filter(s => s.owner).length,
-                selected: state.selectedServers.size
+                selected: state.selectedServers.size,
+                large: state.servers.filter(s => s.memberCount > 1000).length,
+                small: state.servers.filter(s => s.memberCount < 100).length
             };
         }
 
@@ -838,9 +1103,27 @@
             render();
         }
 
+        function selectByCategory(category) {
+            const servers = state.servers.filter(s => 
+                categorizeServer(s).includes(category)
+            );
+            state.selectedServers = new Set(servers.map(s => s.id));
+            render();
+        }
+
         function selectSmallServers() {
             const small = state.servers.filter(s => s.memberCount < 100);
             state.selectedServers = new Set(small.map(s => s.id));
+            render();
+        }
+
+        function selectAll() {
+            state.selectedServers = new Set(state.servers.map(s => s.id));
+            render();
+        }
+
+        function deselectAll() {
+            state.selectedServers = new Set();
             render();
         }
 
@@ -902,72 +1185,32 @@
             document.body.appendChild(modalDiv);
         }
 
-        // ===== DM FUNCTIONS =====
-        function getFilteredDMs() {
-            return state.dmChannels
-                .filter(dm => dm.name.toLowerCase().includes(state.searchTerm.toLowerCase()))
-                .sort((a, b) => {
-                    if (state.sortBy === 'activity') return new Date(b.lastMessageDate) - new Date(a.lastMessageDate);
-                    return a.name.localeCompare(b.name);
-                });
-        }
-
-        function getDMStats() {
-            return {
-                total: state.dmChannels.length,
-                active: state.dmChannels.filter(dm => dm.lastMessageDate && (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) < 30).length,
-                inactive: state.dmChannels.filter(dm => !dm.lastMessageDate || (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) > 180).length,
-                selected: state.selectedDMs.size
-            };
-        }
-
-        function toggleDM(dmId) {
-            if (state.selectedDMs.has(dmId)) {
-                state.selectedDMs.delete(dmId);
-            } else {
-                state.selectedDMs.add(dmId);
+        function showDuplicateModal() {
+            const duplicates = findDuplicateServers();
+            
+            if (duplicates.length === 0) {
+                alert('No duplicate servers found!');
+                return;
             }
-            render();
-        }
-
-        function selectInactiveDMs() {
-            const inactive = state.dmChannels.filter(dm => 
-                !dm.lastMessageDate || (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) > 180
-            );
-            state.selectedDMs = new Set(inactive.map(dm => dm.id));
-            render();
-        }
-
-        function openDMsList() {
-            window.open('https://discord.com/channels/@me', '_blank');
-            showCloseDMInstructions(state.selectedDMs.size);
-        }
-
-        function showCloseDMInstructions(count) {
+            
             const modalHtml = `
                 <div class="modal-overlay" onclick="closeModal()">
                     <div class="modal" onclick="event.stopPropagation()">
-                        <h2>📍 DMs Opened!</h2>
-                        <p class="server-opened">Close ${count} DM${count !== 1 ? 's' : ''}</p>
-                        <div class="modal-steps">
-                            <div class="modal-step">
-                                <div class="step-number">1</div>
-                                <div class="step-text">Find the DM in your Direct Messages list (left sidebar)</div>
+                        <h2>🔍 Duplicate Servers Found</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Found ${duplicates.length} potential duplicate${duplicates.length > 1 ? 's' : ''}. You might be in these servers multiple times.
+                        </p>
+                        ${duplicates.map(dup => `
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">${dup.server1.name}</div>
+                                <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    Server 1: ${dup.server1.memberCount.toLocaleString()} members
+                                    <br>
+                                    Server 2: ${dup.server2.memberCount.toLocaleString()} members
+                                </div>
                             </div>
-                            <div class="modal-step">
-                                <div class="step-number">2</div>
-                                <div class="step-text">Right-click on the DM</div>
-                            </div>
-                            <div class="modal-step">
-                                <div class="step-number">3</div>
-                                <div class="step-text">Click "Close DM" in the menu</div>
-                            </div>
-                            <div class="modal-step">
-                                <div class="step-number">4</div>
-                                <div class="step-text">Repeat for each DM you want to close</div>
-                            </div>
-                        </div>
-                        <button class="modal-close" onclick="closeModal()">Got it!</button>
+                        `).join('')}
+                        <button class="modal-close" onclick="closeModal()">Close</button>
                     </div>
                 </div>
             `;
@@ -991,11 +1234,40 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.owned}</div>
-                        <div class="stat-label">Servers You Own</div>
+                        <div class="stat-label">You Own</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.large}</div>
+                        <div class="stat-label">Large (1000+)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.small}</div>
+                        <div class="stat-label">Small (<100)</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.selected}</div>
                         <div class="stat-label">Selected</div>
+                    </div>
+                </div>
+
+                <div class="category-filter">
+                    <div class="category-chip ${state.categoryFilter === 'all' ? 'active' : ''}" onclick="updateCategoryFilter('all')">
+                        All Servers
+                    </div>
+                    <div class="category-chip ${state.categoryFilter === 'gaming' ? 'active' : ''}" onclick="updateCategoryFilter('gaming')">
+                        🎮 Gaming
+                    </div>
+                    <div class="category-chip ${state.categoryFilter === 'personal' ? 'active' : ''}" onclick="updateCategoryFilter('personal')">
+                        👥 Personal
+                    </div>
+                    <div class="category-chip ${state.categoryFilter === 'work' ? 'active' : ''}" onclick="updateCategoryFilter('work')">
+                        💼 Work
+                    </div>
+                    <div class="category-chip ${state.categoryFilter === 'large' ? 'active' : ''}" onclick="updateCategoryFilter('large')">
+                        🏆 Large
+                    </div>
+                    <div class="category-chip ${state.categoryFilter === 'owned' ? 'active' : ''}" onclick="updateCategoryFilter('owned')">
+                        👑 Owned
                     </div>
                 </div>
 
@@ -1004,9 +1276,12 @@
                     <select class="btn" onchange="updateSort(this.value)">
                         <option value="name" ${state.sortBy === 'name' ? 'selected' : ''}>Name (A-Z)</option>
                         <option value="members" ${state.sortBy === 'members' ? 'selected' : ''}>Member Count</option>
+                        <option value="growth" ${state.sortBy === 'growth' ? 'selected' : ''}>Growth</option>
                     </select>
-                    <button class="btn" onclick="selectSmallServers()">Select Small Servers</button>
-                    <button class="btn" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
+                    <button class="btn" onclick="selectAll()">Select All</button>
+                    <button class="btn" onclick="deselectAll()">Deselect All</button>
+                    <button class="btn" onclick="selectSmallServers()">Select Small</button>
+                    <button class="btn btn-primary" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
                         Open ${stats.selected} Selected
                     </button>
                 </div>
@@ -1014,6 +1289,9 @@
                 <div class="item-list">
                     ${filtered.map((server, i) => {
                         const isSelected = state.selectedServers.has(server.id);
+                        const categories = categorizeServer(server);
+                        const growth = getServerGrowth(server.id);
+                        const permissions = analyzePermissions(server);
 
                         return `
                             <div class="item-card ${isSelected ? 'selected' : ''}" style="animation-delay: ${i * 0.05}s">
@@ -1024,7 +1302,26 @@
                                     </div>
                                     <div class="item-info">
                                         <div class="item-name">${server.name}</div>
-                                        <div class="item-subtitle">${server.memberCount.toLocaleString()} members ${server.owner ? '• Owner' : ''}</div>
+                                        <div class="item-subtitle">
+                                            ${server.memberCount.toLocaleString()} members
+                                            ${server.owner ? ' • Owner' : ''}
+                                            ${growth ? ` • ${growth.trending === 'up' ? '📈' : growth.trending === 'down' ? '📉' : '➡️'} ${growth.percentChange}%` : ''}
+                                        </div>
+                                        <div style="margin-top: 0.5rem;">
+                                            ${categories.map(cat => {
+                                                const colors = {
+                                                    'gaming': 'primary',
+                                                    'personal': 'secondary',
+                                                    'work': 'warning',
+                                                    'large': 'danger',
+                                                    'owned': 'primary',
+                                                    'education': 'secondary',
+                                                    'creative': 'secondary'
+                                                };
+                                                return `<span class="badge badge-${colors[cat] || 'secondary'}">${cat}</span>`;
+                                            }).join('')}
+                                            ${permissions.length > 0 ? `<span class="badge badge-${permissions[0].level === 'high' ? 'danger' : 'warning'}">⚠️ ${permissions[0].text}</span>` : ''}
+                                        </div>
                                     </div>
                                 </div>
                                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
@@ -1046,92 +1343,119 @@
             `;
         }
 
-        function renderDMsTab() {
-            const stats = getDMStats();
-            const filtered = getFilteredDMs();
-
-            if (state.dmChannels.length === 0) {
-                return `
-                    <div class="info-box">
-                        <p><strong>DM Management Not Available</strong></p>
-                        <p>Discord's API doesn't provide access to DM channels through standard OAuth.</p>
-                        <p style="margin-top: 1rem;">You can still manage your DMs directly in Discord:</p>
-                        <a href="https://discord.com/channels/@me" target="_blank" class="btn" style="display: inline-block; margin-top: 1rem; text-decoration: none;">
-                            Open Discord DMs
-                        </a>
-                    </div>
-                `;
-            }
+        function renderToolsTab() {
+            const duplicates = findDuplicateServers();
+            const highRiskServers = state.servers.filter(s => {
+                const perms = analyzePermissions(s);
+                return perms.some(p => p.level === 'high');
+            });
 
             return `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.total}</div>
-                        <div class="stat-label">Total DMs</div>
+                <div class="insight-grid">
+                    <div class="insight-section">
+                        <h3>🔧 Bulk Actions</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Perform actions on multiple servers at once
+                        </p>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="selectByCategory('gaming')">Select All Gaming</button>
+                            <button class="btn btn-primary" onclick="selectByCategory('personal')">Select All Personal</button>
+                            <button class="btn btn-primary" onclick="selectByCategory('large')">Select All Large</button>
+                            <button class="btn" onclick="exportToCSV()">📊 Export to CSV</button>
+                            <button class="btn" onclick="exportToJSON()">📄 Export to JSON</button>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.active}</div>
-                        <div class="stat-label">Active (30d)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.inactive}</div>
-                        <div class="stat-label">Inactive (180d+)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.selected}</div>
-                        <div class="stat-label">Selected</div>
-                    </div>
-                </div>
 
-                <div class="controls">
-                    <input type="text" class="search-box" placeholder="Search DMs..." value="${state.searchTerm}" oninput="updateSearch(this.value)"/>
-                    <select class="btn" onchange="updateSort(this.value)">
-                        <option value="activity" ${state.sortBy === 'activity' ? 'selected' : ''}>Last Message</option>
-                        <option value="name" ${state.sortBy === 'name' ? 'selected' : ''}>Name</option>
-                    </select>
-                    <button class="btn" onclick="selectInactiveDMs()">Select Inactive</button>
-                    <button class="btn btn-danger" onclick="openDMsList()" ${stats.selected === 0 ? 'disabled' : ''}>
-                        Close ${stats.selected} DM${stats.selected !== 1 ? 's' : ''}
-                    </button>
-                </div>
+                    <div class="insight-section">
+                        <h3>🔍 Duplicate Detector</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Find servers you might be in multiple times
+                        </p>
+                        ${duplicates.length > 0 ? `
+                            <div class="warning-box">
+                                <strong>⚠️ ${duplicates.length} potential duplicate${duplicates.length > 1 ? 's' : ''} found!</strong>
+                                <p style="margin-top: 0.5rem;">You may be in the same community multiple times.</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="showDuplicateModal()">View Duplicates</button>
+                        ` : `
+                            <div class="info-box">
+                                <p><strong>✅ No duplicates found!</strong></p>
+                                <p>You don't appear to be in any servers multiple times.</p>
+                            </div>
+                        `}
+                    </div>
 
-                <div class="item-list">
-                    ${filtered.map((dm, i) => {
-                        const daysSinceMessage = dm.lastMessageDate ? (Date.now() - new Date(dm.lastMessageDate)) / (1000 * 60 * 60 * 24) : 999;
-                        const isInactive = daysSinceMessage > 180;
-                        const isSelected = state.selectedDMs.has(dm.id);
-
-                        return `
-                            <div class="item-card ${isSelected ? 'selected' : ''}" style="animation-delay: ${i * 0.05}s">
-                                <div class="item-header">
-                                    <input type="checkbox" class="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleDM('${dm.id}')"/>
-                                    <div class="item-icon">
-                                        ${dm.type === 3 ? '👥' : dm.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div class="item-info">
-                                        <div class="item-name">${dm.name}</div>
-                                        <div class="item-subtitle">${dm.type === 3 ? 'Group DM' : 'Direct Message'}</div>
-                                    </div>
-                                    <span class="badge ${isInactive ? 'badge-inactive' : 'badge-active'}">
-                                        ${isInactive ? 'Inactive' : 'Active'}
-                                    </span>
-                                </div>
-                                <div class="item-stats">
-                                    <div class="stat-item">
-                                        <div class="stat-item-label">Last Message</div>
-                                        <div class="stat-item-value ${isInactive ? 'inactive' : ''}">
-                                            ${dm.lastMessageDate ? formatDate(dm.lastMessageDate) : 'Unknown'}
+                    <div class="insight-section">
+                        <h3>🔐 Permission Auditor</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Servers where you have elevated permissions
+                        </p>
+                        ${highRiskServers.length > 0 ? `
+                            <div class="warning-box">
+                                <strong>⚠️ ${highRiskServers.length} server${highRiskServers.length > 1 ? 's' : ''} with Admin access</strong>
+                                <p style="margin-top: 0.5rem;">Review these servers to ensure you trust them.</p>
+                            </div>
+                            ${highRiskServers.slice(0, 5).map(s => {
+                                const perms = analyzePermissions(s);
+                                return `
+                                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                                        <div style="font-weight: bold;">${s.name}</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">
+                                            ${perms.map(p => `<span class="badge badge-${p.level === 'high' ? 'danger' : 'warning'}">${p.text}</span>`).join(' ')}
                                         </div>
                                     </div>
-                                </div>
-                                <div style="margin-top: 1rem;">
-                                    <a href="https://discord.com/channels/@me/${dm.id}" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center;">
-                                        Open DM
-                                    </a>
-                                </div>
+                                `;
+                            }).join('')}
+                        ` : `
+                            <div class="info-box">
+                                <p><strong>✅ No admin permissions</strong></p>
+                                <p>You don't have administrator access in any servers (except those you own).</p>
                             </div>
-                        `;
-                    }).join('')}
+                        `}
+                    </div>
+
+                    <div class="insight-section">
+                        <h3>📈 Server Growth Tracker</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Track member count changes over time
+                        </p>
+                        ${state.lastSnapshot ? `
+                            <div class="info-box">
+                                <p><strong>📸 Last snapshot:</strong> ${new Date(state.lastSnapshot).toLocaleDateString()}</p>
+                                <p style="margin-top: 0.5rem;">
+                                    Tracking ${Object.keys(state.growthHistory).length} servers with ${Object.values(state.growthHistory).reduce((sum, h) => sum + h.length, 0)} total data points.
+                                </p>
+                            </div>
+                            ${state.servers.filter(s => getServerGrowth(s.id)).slice(0, 5).map(s => {
+                                const growth = getServerGrowth(s.id);
+                                return `
+                                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: bold;">${s.name}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                                                    ${s.memberCount.toLocaleString()} members
+                                                </div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <div style="font-weight: bold; color: var(--accent-${growth.trending === 'up' ? 'primary' : growth.trending === 'down' ? 'danger' : 'secondary'});">
+                                                    ${growth.trending === 'up' ? '📈' : growth.trending === 'down' ? '📉' : '➡️'} ${growth.percentChange}%
+                                                </div>
+                                                <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                                    ${growth.dataPoints} snapshots
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        ` : `
+                            <div class="info-box">
+                                <p><strong>📊 Growth tracking started!</strong></p>
+                                <p style="margin-top: 0.5rem;">Come back tomorrow to see member count changes.</p>
+                            </div>
+                        `}
+                    </div>
                 </div>
             `;
         }
@@ -1142,6 +1466,13 @@
             const smallServers = state.servers.filter(s => s.memberCount < 50);
             const totalMembers = state.servers.reduce((sum, s) => sum + s.memberCount, 0);
             const avgMembers = Math.round(totalMembers / state.servers.length);
+            
+            const categoryCounts = {};
+            state.servers.forEach(s => {
+                categorizeServer(s).forEach(cat => {
+                    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                });
+            });
 
             return `
                 <div class="insight-grid">
@@ -1149,7 +1480,7 @@
                         <div class="insight-section">
                             <h3>🔗 Connected Accounts</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                Accounts you've linked to Discord for rich presence and integrations
+                                Accounts you've linked to Discord
                             </p>
                             ${state.connections.map(conn => `
                                 <div class="connection-item">
@@ -1161,14 +1492,14 @@
                                 </div>
                             `).join('')}
                             <a href="https://discord.com/settings/connections" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center; margin-top: 1rem;">
-                                Manage Connections in Discord
+                                Manage Connections
                             </a>
                         </div>
                     ` : `
                         <div class="insight-section">
                             <h3>🔗 Connected Accounts</h3>
                             <p style="color: var(--text-secondary);">
-                                No connected accounts found. Link accounts like Spotify, Xbox, or GitHub to show your activity and gaming status on Discord!
+                                No connected accounts found. Link accounts like Spotify, Xbox, or GitHub!
                             </p>
                             <a href="https://discord.com/settings/connections" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center; margin-top: 1rem;">
                                 Connect Accounts
@@ -1177,50 +1508,33 @@
                     `}
 
                     <div class="insight-section">
-                        <h3>📊 Server Overview</h3>
-                        <div class="item-stats" style="margin-bottom: 1.5rem;">
-                            <div class="stat-item">
-                                <div class="stat-item-label">Total Servers</div>
-                                <div class="stat-item-value">${state.servers.length}</div>
+                        <h3>📊 Server Distribution</h3>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${state.servers.length}</div>
+                                <div class="stat-label">Total</div>
                             </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Servers You Own</div>
-                                <div class="stat-item-value">${ownedServers.length}</div>
+                            <div class="stat-card">
+                                <div class="stat-value">${categoryCounts.gaming || 0}</div>
+                                <div class="stat-label">Gaming</div>
                             </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Total Members</div>
-                                <div class="stat-item-value">${totalMembers.toLocaleString()}</div>
+                            <div class="stat-card">
+                                <div class="stat-value">${categoryCounts.personal || 0}</div>
+                                <div class="stat-label">Personal</div>
                             </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Avg Members/Server</div>
-                                <div class="stat-item-value">${avgMembers.toLocaleString()}</div>
+                            <div class="stat-card">
+                                <div class="stat-value">${categoryCounts.work || 0}</div>
+                                <div class="stat-label">Work</div>
                             </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Large Servers (1000+)</div>
-                                <div class="stat-item-value">${largeServers.length}</div>
+                            <div class="stat-card">
+                                <div class="stat-value">${totalMembers.toLocaleString()}</div>
+                                <div class="stat-label">Total Members</div>
                             </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Small Servers (<50)</div>
-                                <div class="stat-item-value">${smallServers.length}</div>
+                            <div class="stat-card">
+                                <div class="stat-value">${avgMembers.toLocaleString()}</div>
+                                <div class="stat-label">Avg/Server</div>
                             </div>
                         </div>
-
-                        ${ownedServers.length > 0 ? `
-                            <div style="margin-top: 1.5rem;">
-                                <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">👑 Servers You Own:</h4>
-                                ${ownedServers.map(s => `
-                                    <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
-                                            <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
-                                        </div>
-                                        <a href="https://discord.com/channels/${s.id}" target="_blank" class="btn" style="text-decoration: none;">
-                                            Manage
-                                        </a>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
                     </div>
 
                     ${largeServers.length > 0 ? `
@@ -1243,56 +1557,22 @@
                         </div>
                     ` : ''}
 
-                    ${smallServers.length > 0 ? `
+                    ${ownedServers.length > 0 ? `
                         <div class="insight-section">
-                            <h3>👥 Small & Personal Servers</h3>
-                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                                ${smallServers.length} server${smallServers.length !== 1 ? 's' : ''} with fewer than 50 members - likely friend groups or personal servers
-                            </p>
-                            <div class="item-stats">
-                                <div class="stat-item">
-                                    <div class="stat-item-label">Small Servers</div>
-                                    <div class="stat-item-value">${smallServers.length}</div>
+                            <h3>👑 Servers You Own</h3>
+                            ${ownedServers.map(s => `
+                                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
+                                    </div>
+                                    <a href="https://discord.com/channels/${s.id}" target="_blank" class="btn" style="text-decoration: none;">
+                                        Manage
+                                    </a>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-item-label">Total Members</div>
-                                    <div class="stat-item-value">${smallServers.reduce((sum, s) => sum + s.memberCount, 0).toLocaleString()}</div>
-                                </div>
-                            </div>
+                            `).join('')}
                         </div>
                     ` : ''}
-
-                    <div class="insight-section">
-                        <h3>💡 Tips & Recommendations</h3>
-                        <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                            <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-primary);">
-                                📌 Declutter Your Server List
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                                Use the "Select Small Servers" button on the Servers tab to quickly select servers with fewer than 100 members. Review and leave any you no longer need.
-                            </div>
-                        </div>
-
-                        ${largeServers.length > 0 ? `
-                            <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                                <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-secondary);">
-                                    💬 You're in ${largeServers.length} large communit${largeServers.length === 1 ? 'y' : 'ies'}
-                                </div>
-                                <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                                    Large servers (1000+ members) can have a lot of activity. Consider muting notifications for channels you don't actively follow.
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
-                            <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-primary);">
-                                🔮 Future Feature: Activity Tracking
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                                Want to see your actual activity data? We're working on a browser extension that will show real message history, last activity timestamps, and more. Stay tuned!
-                            </div>
-                        </div>
-                    </div>
                 </div>
             `;
         }
@@ -1306,16 +1586,17 @@
                     <div class="container">
                         <div class="header">
                             <h1>Discord Manager</h1>
-                            <p class="subtitle">Declutter your Discord, reclaim your focus</p>
+                            <p class="subtitle">Complete Discord Server Management Suite</p>
                         </div>
                         ${state.error ? `<div class="error">Error: ${state.error}</div>` : ''}
                         <div class="info-box">
-                            <p><strong>What this app does:</strong></p>
-                            <p>• Analyze all your Discord servers and identify which ones you're inactive in</p>
-                            <p>• Get detailed insights about your Discord usage, connections, and server statistics</p>
-                            <p>• Easily manage and leave servers you no longer participate in</p>
-                            <p>• View comprehensive analytics about your Discord presence</p>
-                            <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">Note: Due to Discord's API limitations, you'll manually confirm leaving servers in Discord. This app organizes everything and provides quick access!</p>
+                            <p><strong>🚀 Complete Feature Set:</strong></p>
+                            <p>• Analyze and categorize all your Discord servers</p>
+                            <p>• Track server growth over time with automatic snapshots</p>
+                            <p>• Find duplicate servers and permission risks</p>
+                            <p>• Export your data to CSV or JSON</p>
+                            <p>• Bulk actions and advanced filtering</p>
+                            <p>• View detailed insights about your Discord presence</p>
                         </div>
                         <div class="login-section">
                             <button class="login-btn" onclick="handleDiscordLogin()">Login with Discord</button>
@@ -1344,7 +1625,7 @@
                 <div class="container">
                     <div class="header">
                         <h1>Discord Manager</h1>
-                        <p class="subtitle">Declutter your Discord, reclaim your focus</p>
+                        <p class="subtitle">Complete Server Management Suite</p>
                     </div>
 
                     ${state.error ? `<div class="error">${state.error}</div>` : ''}
@@ -1361,23 +1642,26 @@
 
                         <div class="tabs">
                             <button class="tab ${state.currentTab === 'servers' ? 'active' : ''}" onclick="switchTab('servers')">
-                                Servers (${state.servers.length})
+                                📋 Servers (${state.servers.length})
+                            </button>
+                            <button class="tab ${state.currentTab === 'tools' ? 'active' : ''}" onclick="switchTab('tools')">
+                                🔧 Tools
                             </button>
                             <button class="tab ${state.currentTab === 'insights' ? 'active' : ''}" onclick="switchTab('insights')">
-                                Insights
+                                📊 Insights
                             </button>
                         </div>
                     ` : ''}
 
                     ${state.currentTab === 'servers' ? renderServersTab() : ''}
+                    ${state.currentTab === 'tools' ? renderToolsTab() : ''}
                     ${state.currentTab === 'insights' ? renderInsightsTab() : ''}
                 </div>
             `;
         }
 
-        // Initialize
-        handleOAuthCallback();
-        render();
+        // Initialize on page load
+        init();
     </script>
 </body>
 </html>
