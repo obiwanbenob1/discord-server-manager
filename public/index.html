@@ -726,6 +726,12 @@
             // Phase 2 Features (analytics - REAL DATA ONLY)
             serverComparison: [], // Array of server IDs being compared
             
+            // Phase 3 Features (gaming & productivity)
+            gameDetections: {}, // { serverId: 'Valorant' | 'League of Legends' | etc }
+            lfgServers: new Set(), // Set of server IDs marked as LFG
+            theme: 'dark', // 'dark' | 'light' | 'custom'
+            savedPresets: [], // [{ name, filters, selectedServers }]
+            
             // Growth tracking (stored in localStorage)
             growthHistory: {}, // { serverId: [{ date, memberCount }] }
             lastSnapshot: null,
@@ -769,7 +775,9 @@
             loadGrowthHistory();
             loadServerCategories();
             loadPhase1Data();
+            loadPhase3Data();
             handleOAuthCallback();
+            applyTheme(); // Apply saved theme
             render();
             
             // Check reminders periodically (every minute) - only if authenticated
@@ -814,6 +822,40 @@
                 localStorage.setItem('discord_server_health', JSON.stringify(state.serverHealth));
             } catch (e) {
                 console.warn('Failed to save Phase 1 data:', e);
+            }
+        }
+
+        // Load all Phase 3 data from localStorage
+        function loadPhase3Data() {
+            try {
+                // Game detections
+                const games = localStorage.getItem('discord_game_detections');
+                if (games) state.gameDetections = JSON.parse(games);
+                
+                // LFG servers
+                const lfg = localStorage.getItem('discord_lfg_servers');
+                if (lfg) state.lfgServers = new Set(JSON.parse(lfg));
+                
+                // Theme
+                const theme = localStorage.getItem('discord_theme');
+                if (theme) state.theme = theme;
+                
+                // Saved presets
+                const presets = localStorage.getItem('discord_saved_presets');
+                if (presets) state.savedPresets = JSON.parse(presets);
+            } catch (e) {
+                console.warn('Failed to load Phase 3 data:', e);
+            }
+        }
+
+        function savePhase3Data() {
+            try {
+                localStorage.setItem('discord_game_detections', JSON.stringify(state.gameDetections));
+                localStorage.setItem('discord_lfg_servers', JSON.stringify(Array.from(state.lfgServers)));
+                localStorage.setItem('discord_theme', state.theme);
+                localStorage.setItem('discord_saved_presets', JSON.stringify(state.savedPresets));
+            } catch (e) {
+                console.warn('Failed to save Phase 3 data:', e);
             }
         }
 
@@ -919,6 +961,7 @@
                 // Calculate real analytics AFTER servers are loaded
                 takeServerSnapshot();
                 calculateAllServerHealth();
+                detectAllGames(); // Phase 3: Detect games
                 checkReminders();
                 
                 render();
@@ -1527,6 +1570,239 @@
             modalDiv.id = 'instruction-modal';
             modalDiv.innerHTML = modalHtml;
             document.body.appendChild(modalDiv);
+        }
+
+        // ===== PHASE 3: GAME SERVER DETECTOR =====
+        const GAME_KEYWORDS = {
+            'Valorant': ['valorant', 'val ', 'valo'],
+            'League of Legends': ['league', 'lol ', 'league of legends', 'lol community'],
+            'Minecraft': ['minecraft', 'mc ', 'mcpe', 'java edition'],
+            'Fortnite': ['fortnite', 'fn ', 'fort'],
+            'Apex Legends': ['apex', 'apex legends'],
+            'CS:GO': ['csgo', 'cs:go', 'counter strike', 'cs2'],
+            'Overwatch': ['overwatch', 'ow ', 'ow2'],
+            'Destiny': ['destiny', 'destiny 2', 'd2'],
+            'Call of Duty': ['cod ', 'call of duty', 'warzone', 'mw2', 'mw3'],
+            'Dota 2': ['dota', 'dota 2'],
+            'Rocket League': ['rocket league', 'rl '],
+            'Rainbow Six': ['rainbow six', 'r6', 'siege'],
+            'World of Warcraft': ['wow ', 'world of warcraft', 'warcraft'],
+            'Final Fantasy': ['ff14', 'ffxiv', 'final fantasy'],
+            'Genshin Impact': ['genshin', 'genshin impact'],
+            'Roblox': ['roblox', 'rbx'],
+            'Among Us': ['among us', 'amongus'],
+            'Dead by Daylight': ['dbd', 'dead by daylight'],
+            'Rust': ['rust game', 'rust pvp'],
+            'Terraria': ['terraria'],
+            'Stardew Valley': ['stardew'],
+            'Pokémon': ['pokemon', 'pokémon'],
+            'Escape from Tarkov': ['tarkov', 'eft']
+        };
+
+        function detectGameForServer(server) {
+            const nameLower = server.name.toLowerCase();
+            
+            for (const [game, keywords] of Object.entries(GAME_KEYWORDS)) {
+                for (const keyword of keywords) {
+                    if (nameLower.includes(keyword)) {
+                        return game;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        function detectAllGames() {
+            state.servers.forEach(server => {
+                const game = detectGameForServer(server);
+                if (game) {
+                    state.gameDetections[server.id] = game;
+                }
+            });
+            savePhase3Data();
+            console.log('Game detection complete:', Object.keys(state.gameDetections).length, 'games detected');
+        }
+
+        function getServersByGame() {
+            const gameMap = new Map();
+            
+            for (const [serverId, game] of Object.entries(state.gameDetections)) {
+                if (!gameMap.has(game)) {
+                    gameMap.set(game, []);
+                }
+                const server = state.servers.find(s => s.id === serverId);
+                if (server) {
+                    gameMap.get(game).push(server);
+                }
+            }
+            
+            return gameMap;
+        }
+
+        // ===== PHASE 3: LFG TRACKER =====
+        function toggleLFG(serverId) {
+            if (state.lfgServers.has(serverId)) {
+                state.lfgServers.delete(serverId);
+            } else {
+                state.lfgServers.add(serverId);
+            }
+            savePhase3Data();
+            render();
+        }
+
+        // ===== PHASE 3: THEME SYSTEM =====
+        function setTheme(theme) {
+            state.theme = theme;
+            savePhase3Data();
+            applyTheme();
+            render();
+        }
+
+        function applyTheme() {
+            const root = document.documentElement;
+            
+            if (state.theme === 'light') {
+                root.style.setProperty('--bg-primary', '#ffffff');
+                root.style.setProperty('--bg-secondary', '#f5f5f5');
+                root.style.setProperty('--bg-card', '#ffffff');
+                root.style.setProperty('--text-primary', '#1a1a1a');
+                root.style.setProperty('--text-secondary', '#666666');
+                root.style.setProperty('--border', '#e0e0e0');
+                root.style.setProperty('--shadow', 'rgba(0, 0, 0, 0.1)');
+            } else if (state.theme === 'dark') {
+                // Default dark theme (already set in CSS)
+                root.style.setProperty('--bg-primary', '#0a0e27');
+                root.style.setProperty('--bg-secondary', '#151b3d');
+                root.style.setProperty('--bg-card', '#1a2142');
+                root.style.setProperty('--text-primary', '#ffffff');
+                root.style.setProperty('--text-secondary', '#8b9dc3');
+                root.style.setProperty('--border', '#2a3454');
+                root.style.setProperty('--shadow', 'rgba(0, 255, 136, 0.1)');
+            }
+        }
+
+        // ===== PHASE 3: TEMPLATES & PRESETS =====
+        function saveCurrentPreset() {
+            const presetName = prompt('Enter a name for this preset:');
+            if (!presetName) return;
+
+            const preset = {
+                name: presetName,
+                timestamp: Date.now(),
+                categoryFilter: state.categoryFilter,
+                sortBy: state.sortBy,
+                searchTerm: state.searchTerm,
+                selectedServers: Array.from(state.selectedServers)
+            };
+
+            state.savedPresets.push(preset);
+            savePhase3Data();
+            alert(`Preset "${presetName}" saved!`);
+            render();
+        }
+
+        function loadPreset(index) {
+            const preset = state.savedPresets[index];
+            if (!preset) return;
+
+            state.categoryFilter = preset.categoryFilter;
+            state.sortBy = preset.sortBy;
+            state.searchTerm = preset.searchTerm || '';
+            state.selectedServers = new Set(preset.selectedServers);
+            
+            alert(`Loaded preset: ${preset.name}`);
+            render();
+        }
+
+        function deletePreset(index) {
+            if (!confirm(`Delete preset "${state.savedPresets[index].name}"?`)) return;
+            
+            state.savedPresets.splice(index, 1);
+            savePhase3Data();
+            render();
+        }
+
+        // ===== PHASE 3: BACKUP & RESTORE =====
+        function exportAllData() {
+            const backup = {
+                version: '1.0',
+                timestamp: Date.now(),
+                data: {
+                    serverCategories: state.serverCategories,
+                    serverNotes: state.serverNotes,
+                    serverReminders: state.serverReminders,
+                    favoriteServers: Array.from(state.favoriteServers),
+                    lastVisited: state.lastVisited,
+                    serverHealth: state.serverHealth,
+                    growthHistory: state.growthHistory,
+                    gameDetections: state.gameDetections,
+                    lfgServers: Array.from(state.lfgServers),
+                    theme: state.theme,
+                    savedPresets: state.savedPresets
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `discord-manager-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importBackup() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const text = await file.text();
+                    const backup = JSON.parse(text);
+
+                    if (!backup.data) {
+                        alert('Invalid backup file!');
+                        return;
+                    }
+
+                    if (!confirm('This will overwrite your current data. Continue?')) {
+                        return;
+                    }
+
+                    // Restore data
+                    state.serverCategories = backup.data.serverCategories || {};
+                    state.serverNotes = backup.data.serverNotes || {};
+                    state.serverReminders = backup.data.serverReminders || {};
+                    state.favoriteServers = new Set(backup.data.favoriteServers || []);
+                    state.lastVisited = backup.data.lastVisited || {};
+                    state.serverHealth = backup.data.serverHealth || {};
+                    state.growthHistory = backup.data.growthHistory || {};
+                    state.gameDetections = backup.data.gameDetections || {};
+                    state.lfgServers = new Set(backup.data.lfgServers || []);
+                    state.theme = backup.data.theme || 'dark';
+                    state.savedPresets = backup.data.savedPresets || [];
+
+                    // Save to localStorage
+                    saveServerCategories();
+                    saveGrowthHistory();
+                    savePhase1Data();
+                    savePhase3Data();
+
+                    applyTheme();
+                    alert('Backup restored successfully!');
+                    render();
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('Failed to import backup file!');
+                }
+            };
+
+            input.click();
         }
 
         // ===== PHASE 1: QUICK LEAVE WORKFLOW =====
@@ -2394,6 +2670,8 @@
                                         <div class="item-subtitle">
                                             ${server.memberCount.toLocaleString()} members
                                             ${server.owner ? ' • Owner' : ''}
+                                            ${state.gameDetections[server.id] ? ` • 🎮 ${state.gameDetections[server.id]}` : ''}
+                                            ${state.lfgServers.has(server.id) ? ' • 👥 LFG' : ''}
                                             ${growth ? ` • ${growth.trending === 'up' ? '📈' : growth.trending === 'down' ? '📉' : '➡️'} ${growth.percentChange}%` : ''}
                                             ${daysSinceVisit !== null ? ` • Visited ${daysSinceVisit === 0 ? 'today' : daysSinceVisit + 'd ago'}` : ' • Never tracked'}
                                         </div>
