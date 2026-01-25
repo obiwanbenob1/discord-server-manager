@@ -95,10 +95,12 @@ app.get('/api/guilds', async (req, res) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
+        console.error('No authorization header provided');
         return res.status(401).json({ error: 'No authorization header' });
     }
 
     const token = authHeader.replace('Bearer ', '');
+    console.log('Fetching guilds for token:', token.substring(0, 10) + '...');
 
     try {
         const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds?with_counts=true', {
@@ -107,6 +109,7 @@ app.get('/api/guilds', async (req, res) => {
             },
         });
 
+        console.log(`Successfully fetched ${guildsResponse.data.length} guilds`);
         const guilds = guildsResponse.data;
 
         // Transform guild data
@@ -123,9 +126,14 @@ app.get('/api/guilds', async (req, res) => {
 
         res.json(serverData);
     } catch (error) {
-        console.error('Guild fetch error:', error.response?.data || error.message);
+        console.error('Guild fetch error details:');
+        console.error('Status:', error.response?.status);
+        console.error('Data:', error.response?.data);
+        console.error('Message:', error.message);
+        
         res.status(error.response?.status || 500).json({ 
-            error: 'Failed to fetch guilds' 
+            error: 'Failed to fetch guilds',
+            details: error.response?.data?.message || error.message
         });
     }
 });
