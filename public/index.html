@@ -775,16 +775,8 @@
             handleOAuthCallback();
             render();
             
-            // Take snapshot on login
+            // Check reminders periodically (every minute) - only if authenticated
             if (state.isAuthenticated) {
-                takeServerSnapshot();
-                calculateAllServerHealth();
-                calculateAllPrivacyScores();
-                calculateAllNotificationEstimates();
-                generateMuteRecommendations();
-                checkReminders();
-                
-                // Check reminders periodically (every minute)
                 setInterval(checkReminders, 60000);
             }
         }
@@ -927,8 +919,13 @@
                 state.isAuthenticated = true;
                 state.loading = false;
                 
-                // Take growth snapshot
+                // Phase 1 & 2: Calculate all analytics AFTER servers are loaded
                 takeServerSnapshot();
+                calculateAllServerHealth();
+                calculateAllPrivacyScores();
+                calculateAllNotificationEstimates();
+                generateMuteRecommendations();
+                checkReminders();
                 
                 render();
             } catch (error) {
@@ -1382,6 +1379,7 @@
             state.servers.forEach(server => {
                 state.privacyScores[server.id] = calculatePrivacyScore(server.id);
             });
+            console.log('Privacy scores calculated:', Object.keys(state.privacyScores).length, 'servers');
         }
 
         // ===== PHASE 2: NOTIFICATION ANALYZER =====
@@ -1414,6 +1412,8 @@
             state.servers.forEach(server => {
                 state.notificationEstimates[server.id] = estimateNotifications(server.id);
             });
+            console.log('Notification estimates calculated:', Object.keys(state.notificationEstimates).length, 'servers');
+            console.log('Total estimated notifications/day:', getTotalEstimatedNotifications());
         }
 
         function getTotalEstimatedNotifications() {
@@ -1466,6 +1466,7 @@
             recommendations.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
             state.muteRecommendations = recommendations;
+            console.log('Mute recommendations generated:', recommendations.length);
             return recommendations;
         }
 
