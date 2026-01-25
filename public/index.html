@@ -467,6 +467,9 @@
             const token = params.get('token');
             const error = params.get('error');
             
+            console.log('OAuth Callback - Token present:', !!token);
+            console.log('OAuth Callback - Error:', error);
+            
             if (error) {
                 state.error = 'Authentication failed. Please try again.';
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -475,12 +478,26 @@
             }
             
             if (token) {
+                console.log('Saving token to storage...');
                 state.accessToken = token;
-                localStorage.setItem('discord_token', token);
+                try {
+                    localStorage.setItem('discord_token', token);
+                    console.log('Token saved to localStorage');
+                } catch (e) {
+                    console.warn('localStorage failed, using sessionStorage:', e);
+                    sessionStorage.setItem('discord_token', token);
+                }
                 window.history.replaceState({}, document.title, window.location.pathname);
                 loadDiscordData(token);
             } else {
-                const savedToken = localStorage.getItem('discord_token');
+                let savedToken = null;
+                try {
+                    savedToken = localStorage.getItem('discord_token');
+                    console.log('Retrieved token from localStorage:', !!savedToken);
+                } catch (e) {
+                    savedToken = sessionStorage.getItem('discord_token');
+                    console.log('Retrieved token from sessionStorage:', !!savedToken);
+                }
                 if (savedToken) {
                     state.accessToken = savedToken;
                     loadDiscordData(savedToken);
@@ -559,6 +576,7 @@
 
         function handleLogout() {
             localStorage.removeItem('discord_token');
+            sessionStorage.removeItem('discord_token');
             state = {
                 isAuthenticated: false,
                 loading: false,
