@@ -442,6 +442,100 @@
             font-weight: bold;
             color: var(--accent-primary);
         }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 2px solid var(--accent-primary);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 255, 136, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .modal h2 {
+            color: var(--accent-primary);
+            margin-bottom: 1rem;
+            font-family: 'Archivo Black', sans-serif;
+        }
+
+        .modal-steps {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .modal-step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .modal-step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-number {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            flex: 1;
+            padding-top: 0.2rem;
+        }
+
+        .modal-close {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-2px);
+        }
+
+        .server-opened {
+            color: var(--accent-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -663,7 +757,55 @@
                 window.open(`https://discord.com/channels/${serverId}`, '_blank');
             });
             
-            alert(`Opened ${selectedArray.length} server(s) in Discord. You can now leave them manually by right-clicking the server icon → Leave Server`);
+            // Show instructions
+            showLeaveInstructions(selectedArray.length);
+        }
+
+        function openServerWithInstructions(serverId, serverName) {
+            window.open(`https://discord.com/channels/${serverId}`, '_blank');
+            showLeaveInstructions(1, serverName);
+        }
+
+        function showLeaveInstructions(count, serverName) {
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <h2>📍 Discord Opened!</h2>
+                        ${serverName ? `<p class="server-opened">Server: ${serverName}</p>` : `<p class="server-opened">${count} server(s) opened in new tab(s)</p>`}
+                        <div class="modal-steps">
+                            <div class="modal-step">
+                                <div class="step-number">1</div>
+                                <div class="step-text">Find the server icon in the left sidebar of Discord</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">2</div>
+                                <div class="step-text">Right-click the server icon</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">3</div>
+                                <div class="step-text">Click "Leave Server" in the menu</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">4</div>
+                                <div class="step-text">Confirm by clicking "Leave Server" again</div>
+                            </div>
+                        </div>
+                        <button class="modal-close" onclick="closeModal()">Got it!</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('instruction-modal');
+            if (modal) {
+                modal.remove();
+            }
         }
 
         function updateSearch(value) {
@@ -829,9 +971,9 @@
                                             Open in Discord
                                         </a>
                                         ${!server.owner ? `
-                                            <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn btn-danger" style="text-decoration: none; text-align: center;" title="Opens Discord where you can leave this server">
+                                            <button class="btn btn-danger" onclick="openServerWithInstructions('${server.id}', '${server.name.replace(/'/g, "\\'")}')">
                                                 Leave Server
-                                            </a>
+                                            </button>
                                         ` : `
                                             <button class="btn" disabled title="You own this server">
                                                 Owner
