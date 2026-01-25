@@ -679,7 +679,10 @@
             // UI state
             searchTerm: '',
             sortBy: 'name',
-            categoryFilter: 'all', // all, gaming, personal, work, large, owned
+            categoryFilter: 'all', // all, gaming, personal, work, large, owned, uncategorized
+            
+            // Manual categorization (stored in localStorage)
+            serverCategories: {}, // { serverId: ['gaming', 'personal'] }
             
             // Growth tracking (stored in localStorage)
             growthHistory: {}, // { serverId: [{ date, memberCount }] }
@@ -689,9 +692,22 @@
             accounts: []
         };
 
+        // Available categories
+        const CATEGORIES = {
+            gaming: { emoji: '🎮', label: 'Gaming' },
+            work: { emoji: '💼', label: 'Work' },
+            personal: { emoji: '👥', label: 'Personal' },
+            education: { emoji: '📚', label: 'Education' },
+            creative: { emoji: '🎨', label: 'Creative' },
+            tech: { emoji: '💻', label: 'Tech' },
+            hobby: { emoji: '🎯', label: 'Hobby' },
+            community: { emoji: '🌐', label: 'Community' }
+        };
+
         // ===== INITIALIZATION =====
         function init() {
             loadGrowthHistory();
+            loadServerCategories();
             handleOAuthCallback();
             render();
             
@@ -891,39 +907,122 @@
             };
         }
 
+        // ===== MANUAL CATEGORIZATION =====
+        function loadServerCategories() {
+            try {
+                const saved = localStorage.getItem('discord_server_categories');
+                if (saved) {
+                    state.serverCategories = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.warn('Failed to load server categories:', e);
+            }
+        }
+
+        function saveServerCategories() {
+            try {
+                localStorage.setItem('discord_server_categories', JSON.stringify(state.serverCategories));
+            } catch (e) {
+                console.warn('Failed to save server categories:', e);
+            }
+        }
+
+        function toggleServerCategory(serverId, category) {
+            if (!state.serverCategories[serverId]) {
+                state.serverCategories[serverId] = [];
+            }
+            
+            const categories = state.serverCategories[serverId];
+            const index = categories.indexOf(category);
+            
+            if (index > -1) {
+                categories.splice(index, 1);
+            } else {
+                categories.push(category);
+            }
+            
+            saveServerCategories();
+            render();
+        }
+
+        function setServerCategories(serverId, categories) {
+            state.serverCategories[serverId] = categories;
+            saveServerCategories();
+            render();
+        }
+
+        function bulkCategorize(category) {
+            const selected = Array.from(state.selectedServers);
+            selected.forEach(serverId => {
+                if (!state.serverCategories[serverId]) {
+                    state.serverCategories[serverId] = [];
+                }
+                if (!state.serverCategories[serverId].includes(category)) {
+                    state.serverCategories[serverId].push(category);
+                }
+            });
+            saveServerCategories();
+            render();
+        }
+
         // ===== SERVER CATEGORIZATION =====
         function categorizeServer(server) {
-            const categories = [];
+            // Use manual categories if set
+            if (state.serverCategories[server.id] && state.serverCategories[server.id].length > 0) {
+                return state.serverCategories[server.id];
+            }
             
-            // Size-based
-            if (server.owner) categories.push('owned');
-            if (server.memberCount > 5000) categories.push('large'); // Raised from 1000 to 5000
-            if (server.memberCount < 50) categories.push('personal');
+            // Otherwise show as uncategorized
+            const autoCategories = [];
             
-            // Name-based heuristics - Expanded gaming keywords
+            // Only auto-detect size-based and ownership
+            if (server.owner) autoCategories.push('owned');
+            if (server.memberCount > 5000) autoCategories.push('large');
+            
+            return autoCategories.length > 0 ? autoCategories : ['uncategorized'];
+        }
+
+        function getSuggestedCategories(server) {
+            // Provide smart suggestions based on keywords
+            const suggestions = [];
             const nameLower = server.name.toLowerCase();
             
-            // Gaming - Much more comprehensive
-            if (nameLower.match(/game|gaming|clan|guild|esport|e-sport|fps|mmo|rpg|pvp|pve|league|valorant|apex|fortnite|cod|warzone|minecraft|roblox|steam|xbox|playstation|nintendo|switch|gamer|play|arena|tournament|competitive|casual|ranked|gg|twitch|streamer|discord|lfg|squad|team|destiny|wow|ff14|final fantasy|overwatch|csgo|counter strike|dota|lol|pubg|rust|ark|tarkov|warframe|gta|rocket league|smash|pokemon|zelda|mario|sonic|halo|battlefield|apex legends/)) {
-                categories.push('gaming');
+            // Gaming suggestions
+            if (nameLower.match(/game|gaming|gamer|play|clan|guild|fps|mmo|rpg|valorant|apex|fortnite|cod|minecraft|league|overwatch|csgo|destiny|wow|pokemon|twitch|esport/)) {
+                suggestions.push('gaming');
             }
             
-            // Work/Professional
-            if (nameLower.match(/work|team|company|corp|business|office|enterprise|professional|inc\.|llc|studio|agency|consulting|solutions/)) {
-                categories.push('work');
+            // Work suggestions
+            if (nameLower.match(/work|team|company|corp|business|office|professional|studio|agency/)) {
+                suggestions.push('work');
             }
             
-            // Education
-            if (nameLower.match(/study|learn|school|university|college|education|academy|class|course|tutor|student|homework/)) {
-                categories.push('education');
+            // Personal/Friend suggestions (small servers)
+            if (server.memberCount < 50) {
+                suggestions.push('personal');
             }
             
-            // Creative/Art
-            if (nameLower.match(/art|creative|design|music|draw|paint|artist|creator|portfolio|graphic|illustration|animation/)) {
-                categories.push('creative');
+            // Education suggestions
+            if (nameLower.match(/study|learn|school|university|college|education|class|course/)) {
+                suggestions.push('education');
             }
             
-            return categories.length > 0 ? categories : ['other'];
+            // Creative suggestions
+            if (nameLower.match(/art|creative|design|music|draw|artist|portfolio/)) {
+                suggestions.push('creative');
+            }
+            
+            // Tech suggestions
+            if (nameLower.match(/dev|code|programming|tech|software|engineer|linux|python|javascript|react/)) {
+                suggestions.push('tech');
+            }
+            
+            // Community suggestions
+            if (server.memberCount > 1000 && !nameLower.match(/game|gaming/)) {
+                suggestions.push('community');
+            }
+            
+            return suggestions;
         }
 
         // ===== DUPLICATE DETECTION =====
@@ -1064,6 +1163,94 @@
         function updateCategoryFilter(category) {
             state.categoryFilter = category;
             render();
+        }
+
+        function showCategoryModal(serverId, serverName) {
+            const server = state.servers.find(s => s.id === serverId);
+            const currentCategories = state.serverCategories[serverId] || [];
+            const suggestions = getSuggestedCategories(server);
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <h2>📁 Categorize Server</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            <strong>${serverName}</strong>
+                        </p>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">Select Categories:</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                ${Object.entries(CATEGORIES).map(([key, cat]) => {
+                                    const isSelected = currentCategories.includes(key);
+                                    const isSuggested = suggestions.includes(key);
+                                    return `
+                                        <button 
+                                            class="btn ${isSelected ? 'btn-primary' : ''}" 
+                                            onclick="toggleServerCategory('${serverId}', '${key}')"
+                                            style="text-align: left; position: relative;">
+                                            ${cat.emoji} ${cat.label}
+                                            ${isSuggested && !isSelected ? '<span style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); font-size: 0.7rem; color: var(--accent-secondary);">suggested</span>' : ''}
+                                        </button>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                        
+                        ${suggestions.length > 0 ? `
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                    💡 <strong>Suggestions based on server name/size:</strong><br>
+                                    ${suggestions.map(s => CATEGORIES[s].emoji + ' ' + CATEGORIES[s].label).join(', ')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <button class="modal-close" onclick="closeModal()">Done</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        function showBulkCategoryModal() {
+            if (state.selectedServers.size === 0) {
+                alert('Please select servers first!');
+                return;
+            }
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <h2>📁 Bulk Categorize</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Add category to ${state.selectedServers.size} selected server${state.selectedServers.size > 1 ? 's' : ''}
+                        </p>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            ${Object.entries(CATEGORIES).map(([key, cat]) => `
+                                <button 
+                                    class="btn btn-primary" 
+                                    onclick="bulkCategorize('${key}'); closeModal();"
+                                    style="text-align: left;">
+                                    ${cat.emoji} ${cat.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                        
+                        <button class="modal-close" onclick="closeModal()" style="margin-top: 1rem;">Cancel</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
         }
 
         function closeModal() {
@@ -1270,17 +1457,16 @@
                     <div class="category-chip ${state.categoryFilter === 'all' ? 'active' : ''}" onclick="updateCategoryFilter('all')">
                         All Servers
                     </div>
-                    <div class="category-chip ${state.categoryFilter === 'gaming' ? 'active' : ''}" onclick="updateCategoryFilter('gaming')">
-                        🎮 Gaming
+                    <div class="category-chip ${state.categoryFilter === 'uncategorized' ? 'active' : ''}" onclick="updateCategoryFilter('uncategorized')">
+                        ❓ Uncategorized
                     </div>
-                    <div class="category-chip ${state.categoryFilter === 'personal' ? 'active' : ''}" onclick="updateCategoryFilter('personal')">
-                        👥 Personal
-                    </div>
-                    <div class="category-chip ${state.categoryFilter === 'work' ? 'active' : ''}" onclick="updateCategoryFilter('work')">
-                        💼 Work
-                    </div>
+                    ${Object.entries(CATEGORIES).map(([key, cat]) => `
+                        <div class="category-chip ${state.categoryFilter === key ? 'active' : ''}" onclick="updateCategoryFilter('${key}')">
+                            ${cat.emoji} ${cat.label}
+                        </div>
+                    `).join('')}
                     <div class="category-chip ${state.categoryFilter === 'large' ? 'active' : ''}" onclick="updateCategoryFilter('large')">
-                        🏆 Large
+                        🏆 Large (5000+)
                     </div>
                     <div class="category-chip ${state.categoryFilter === 'owned' ? 'active' : ''}" onclick="updateCategoryFilter('owned')">
                         👑 Owned
@@ -1297,6 +1483,9 @@
                     <button class="btn" onclick="selectAll()">Select All</button>
                     <button class="btn" onclick="deselectAll()">Deselect All</button>
                     <button class="btn" onclick="selectSmallServers()">Select Small</button>
+                    <button class="btn" onclick="showBulkCategoryModal()" ${stats.selected === 0 ? 'disabled' : ''}>
+                        📁 Categorize ${stats.selected}
+                    </button>
                     <button class="btn btn-primary" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
                         Open ${stats.selected} Selected
                     </button>
@@ -1323,20 +1512,19 @@
                                             ${server.owner ? ' • Owner' : ''}
                                             ${growth ? ` • ${growth.trending === 'up' ? '📈' : growth.trending === 'down' ? '📉' : '➡️'} ${growth.percentChange}%` : ''}
                                         </div>
-                                        <div style="margin-top: 0.5rem;">
-                                            ${categories.map(cat => {
-                                                const colors = {
-                                                    'gaming': 'primary',
-                                                    'personal': 'secondary',
-                                                    'work': 'warning',
-                                                    'large': 'danger',
-                                                    'owned': 'primary',
-                                                    'education': 'secondary',
-                                                    'creative': 'secondary'
-                                                };
-                                                return `<span class="badge badge-${colors[cat] || 'secondary'}">${cat}</span>`;
+                                        <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                            ${categories.filter(c => c !== 'owned' && c !== 'large').map(cat => {
+                                                if (cat === 'uncategorized') {
+                                                    return `<span class="badge badge-secondary">❓ Uncategorized</span>`;
+                                                }
+                                                const catInfo = CATEGORIES[cat];
+                                                return catInfo ? `<span class="badge badge-primary">${catInfo.emoji} ${catInfo.label}</span>` : '';
                                             }).join('')}
+                                            ${categories.includes('large') ? `<span class="badge badge-danger">🏆 Large</span>` : ''}
                                             ${permissions.length > 0 ? `<span class="badge badge-${permissions[0].level === 'high' ? 'danger' : 'warning'}">⚠️ ${permissions[0].text}</span>` : ''}
+                                            <button class="badge badge-secondary" onclick="event.stopPropagation(); showCategoryModal('${server.id}', '${server.name.replace(/'/g, "\\'")}');" style="cursor: pointer; border: 1px dashed var(--border); background: transparent;">
+                                                + Category
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1374,11 +1562,14 @@
                             Perform actions on multiple servers at once
                         </p>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="selectByCategory('gaming')">Select All Gaming</button>
-                            <button class="btn btn-primary" onclick="selectByCategory('personal')">Select All Personal</button>
-                            <button class="btn btn-primary" onclick="selectByCategory('large')">Select All Large</button>
+                            <button class="btn btn-primary" onclick="selectSmallServers()">Select Small Servers</button>
                             <button class="btn" onclick="exportToCSV()">📊 Export to CSV</button>
                             <button class="btn" onclick="exportToJSON()">📄 Export to JSON</button>
+                        </div>
+                        <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                💡 <strong>Tip:</strong> Select servers on the Servers tab, then use "📁 Categorize" to organize them in bulk!
+                            </p>
                         </div>
                     </div>
 
