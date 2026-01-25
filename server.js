@@ -118,12 +118,7 @@ app.get('/api/guilds', async (req, res) => {
                 : null,
             memberCount: guild.approximate_member_count || 0,
             owner: guild.owner,
-            permissions: guild.permissions,
-            // Note: Discord's user OAuth doesn't provide activity data
-            // These would need to be tracked separately or require bot access
-            lastMessageDate: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000),
-            yourLastActivity: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000),
-            messagesLast7Days: Math.floor(Math.random() * 1000)
+            permissions: guild.permissions
         }));
 
         res.json(serverData);
