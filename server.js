@@ -114,27 +114,14 @@ app.get('/api/guilds', async (req, res) => {
         // First, let's verify the token and check scopes
         console.log('Attempting to fetch guilds from Discord API...');
         
-        // Try with with_counts first
-        let guilds;
-        try {
-            const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds?with_counts=true', {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            guilds = guildsResponse.data;
-            console.log(`Successfully fetched ${guilds.length} guilds WITH counts`);
-        } catch (countsError) {
-            console.warn('Failed to fetch with counts, trying without...', countsError.response?.status);
-            // Fallback: fetch without counts if with_counts causes issues
-            const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            guilds = guildsResponse.data;
-            console.log(`Successfully fetched ${guilds.length} guilds WITHOUT counts`);
-        }
+        const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds?with_counts=true', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log(`Successfully fetched ${guildsResponse.data.length} guilds with member counts`);
+        const guilds = guildsResponse.data;
 
         // Transform guild data
         const serverData = guilds.map(guild => ({
@@ -148,6 +135,7 @@ app.get('/api/guilds', async (req, res) => {
             permissions: guild.permissions
         }));
 
+        console.log(`Transformed ${serverData.length} servers, sample member count:`, serverData[0]?.memberCount);
         res.json(serverData);
     } catch (error) {
         console.error('==================== GUILD FETCH ERROR ====================');
