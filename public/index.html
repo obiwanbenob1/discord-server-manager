@@ -2487,41 +2487,6 @@
                         }).join('')}
                     </div>
 
-                    <!-- Server Comparison -->
-                    <div class="insight-section">
-                        <h3>⚖️ Server Comparison</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Compare servers side-by-side (REAL DATA ONLY)
-                        </p>
-
-                        ${state.serverComparison.length > 0 ? `
-                            <div style="margin-bottom: 1rem;">
-                                <strong>${state.serverComparison.length} server${state.serverComparison.length > 1 ? 's' : ''} selected:</strong>
-                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
-                                    ${state.serverComparison.map(id => {
-                                        const s = state.servers.find(srv => srv.id === id);
-                                        return s ? `
-                                            <span class="badge badge-primary" style="cursor: pointer;" onclick="removeFromComparison('${id}')">
-                                                ${s.name} ✕
-                                            </span>
-                                        ` : '';
-                                    }).join('')}
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-primary" onclick="showComparisonModal()" ${state.serverComparison.length < 2 ? 'disabled' : ''} style="flex: 1;">
-                                    Compare Now
-                                </button>
-                                <button class="btn" onclick="clearComparison()">Clear</button>
-                            </div>
-                        ` : `
-                            <div class="info-box">
-                                <p><strong>Add servers to compare</strong></p>
-                                <p>Go to the Servers tab and click ⚖️ "Compare" button on server cards to add them (max 5).</p>
-                            </div>
-                        `}
-                    </div>
-
                     <!-- Coming Soon -->
                     <div class="insight-section">
                         <h3>🚀 Coming Soon: Real Activity Tracking</h3>
