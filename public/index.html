@@ -1321,6 +1321,110 @@
         }
 
         // ===== PHASE 2: SERVER COMPARISON =====
+        function compareSelectedServers() {
+            const selectedArray = Array.from(state.selectedServers);
+            
+            if (selectedArray.length < 2) {
+                alert('Please select at least 2 servers to compare!');
+                return;
+            }
+
+            if (selectedArray.length > 5) {
+                alert('You can compare up to 5 servers at once. Please select fewer servers.');
+                return;
+            }
+
+            // Directly show comparison modal with selected servers
+            showComparisonModalWithServers(selectedArray);
+        }
+
+        function showComparisonModalWithServers(serverIds) {
+            const servers = serverIds
+                .map(id => state.servers.find(s => s.id === id))
+                .filter(Boolean);
+
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 900px;">
+                        <h2>⚖️ Server Comparison</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Comparing ${servers.length} servers
+                        </p>
+
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: var(--bg-secondary);">
+                                        <th style="padding: 0.75rem; text-align: left; border: 1px solid var(--border);">Metric</th>
+                                        ${servers.map(s => `
+                                            <th style="padding: 0.75rem; text-align: center; border: 1px solid var(--border); max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${s.name}</th>
+                                        `).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Members</td>
+                                        ${servers.map(s => `
+                                            <td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${s.memberCount.toLocaleString()}</td>
+                                        `).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Health Score</td>
+                                        ${servers.map(s => {
+                                            const health = state.serverHealth[s.id] || { score: 0 };
+                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border); color: ${getHealthColor(health.score)}; font-weight: bold;">${health.score}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Growth</td>
+                                        ${servers.map(s => {
+                                            const growth = getServerGrowth(s.id);
+                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${growth ? growth.percentChange + '%' : 'N/A'}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Last Visited</td>
+                                        ${servers.map(s => {
+                                            const days = getDaysSinceVisit(s.id);
+                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${days !== null ? days + 'd ago' : 'Never'}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Has Notes</td>
+                                        ${servers.map(s => {
+                                            const hasNote = !!state.serverNotes[s.id];
+                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${hasNote ? '✓' : '✗'}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Favorite</td>
+                                        ${servers.map(s => {
+                                            const isFav = state.favoriteServers.has(s.id);
+                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${isFav ? '⭐' : '☆'}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Owner</td>
+                                        ${servers.map(s => `
+                                            <td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${s.owner ? '✓' : '✗'}</td>
+                                        `).join('')}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button class="modal-close" onclick="closeModal()" style="margin-top: 1.5rem;">Close</button>
+                    </div>
+                </div>
+            `;
+
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        // Legacy functions (keeping for Analytics tab compatibility)
         function addToComparison(serverId) {
             if (!state.serverComparison.includes(serverId)) {
                 state.serverComparison.push(serverId);
@@ -2237,6 +2341,9 @@
                     <button class="btn" onclick="showBulkCategoryModal()" ${stats.selected === 0 ? 'disabled' : ''}>
                         📁 Categorize ${stats.selected}
                     </button>
+                    <button class="btn" onclick="compareSelectedServers()" ${stats.selected < 2 ? 'disabled' : ''} title="${stats.selected < 2 ? 'Select at least 2 servers to compare' : 'Compare selected servers'}">
+                        ⚖️ Compare ${stats.selected > 0 ? stats.selected : ''}
+                    </button>
                     <button class="btn btn-danger" onclick="startQuickLeave()" ${stats.selected === 0 ? 'disabled' : ''}>
                         🚪 Quick Leave ${stats.selected}
                     </button>
@@ -2311,15 +2418,6 @@
                                             <button class="badge badge-secondary" onclick="event.stopPropagation(); showServerDetailsModal('${server.id}');" style="cursor: pointer; border: 1px dashed var(--border); background: transparent;">
                                                 📝 Details
                                             </button>
-                                            ${state.serverComparison.includes(server.id) ? `
-                                                <button class="badge badge-primary" onclick="event.stopPropagation(); removeFromComparison('${server.id}');" style="cursor: pointer;">
-                                                    ✓ Comparing
-                                                </button>
-                                            ` : `
-                                                <button class="badge badge-secondary" onclick="event.stopPropagation(); addToComparison('${server.id}');" style="cursor: pointer; border: 1px dashed var(--border); background: transparent;">
-                                                    ⚖️ Compare
-                                                </button>
-                                            `}
                                         </div>
                                     </div>
                                 </div>
