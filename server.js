@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 
 // Get Discord OAuth URL
 app.get('/api/auth/url', (req, res) => {
-    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20guilds.join%20dm_channels.read%20connections`;
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections`;
     res.json({ url: authUrl });
 });
 
@@ -191,6 +191,8 @@ app.get('/api/dm-channels', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
 
     try {
+        // Note: This endpoint may not be available with OAuth user tokens
+        // It's primarily for bot tokens. We'll try it but expect it to fail.
         const channelsResponse = await axios.get('https://discord.com/api/users/@me/channels', {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -220,10 +222,8 @@ app.get('/api/dm-channels', async (req, res) => {
         res.json(dmData);
     } catch (error) {
         console.error('DM channels fetch error:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({ 
-            error: 'Failed to fetch DM channels',
-            details: error.response?.data
-        });
+        // Return empty array instead of error - this feature just won't be available
+        res.json([]);
     }
 });
 
