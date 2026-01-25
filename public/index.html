@@ -723,10 +723,7 @@
             lastVisited: {}, // { serverId: timestamp }
             serverHealth: {}, // { serverId: { score: 0-100, issues: [] } }
             
-            // Phase 2 Features (analytics)
-            privacyScores: {}, // { serverId: { score: 0-100, risks: [] } }
-            notificationEstimates: {}, // { serverId: estimatedPerDay }
-            muteRecommendations: [], // [{ serverId, reason, priority }]
+            // Phase 2 Features (analytics - REAL DATA ONLY)
             serverComparison: [], // Array of server IDs being compared
             
             // Growth tracking (stored in localStorage)
@@ -919,12 +916,9 @@
                 state.isAuthenticated = true;
                 state.loading = false;
                 
-                // Phase 1 & 2: Calculate all analytics AFTER servers are loaded
+                // Calculate real analytics AFTER servers are loaded
                 takeServerSnapshot();
                 calculateAllServerHealth();
-                calculateAllPrivacyScores();
-                calculateAllNotificationEstimates();
-                generateMuteRecommendations();
                 checkReminders();
                 
                 render();
@@ -1326,150 +1320,6 @@
             return roleMap;
         }
 
-        // ===== PHASE 2: PRIVACY SCORE =====
-        function calculatePrivacyScore(serverId) {
-            const server = state.servers.find(s => s.id === serverId);
-            if (!server) return { score: 0, risks: [] };
-
-            let score = 100;
-            const risks = [];
-
-            // Check 1: Admin permissions (high risk)
-            const perms = analyzePermissions(server);
-            if (perms.some(p => p.level === 'high')) {
-                score -= 40;
-                risks.push('Server has admin access to your account');
-            } else if (perms.some(p => p.level === 'medium')) {
-                score -= 20;
-                risks.push('Server has elevated permissions');
-            }
-
-            // Check 2: Very large server (data exposure risk)
-            if (server.memberCount > 50000) {
-                score -= 20;
-                risks.push('Very large server (50k+ members can see your activity)');
-            } else if (server.memberCount > 10000) {
-                score -= 10;
-                risks.push('Large server (10k+ members can see your activity)');
-            }
-
-            // Check 3: Not categorized (unknown purpose)
-            const categories = categorizeServer(server);
-            if (categories.includes('uncategorized')) {
-                score -= 10;
-                risks.push('Unknown server purpose - harder to track data exposure');
-            }
-
-            // Check 4: No notes (lack of context)
-            if (!state.serverNotes[serverId]) {
-                score -= 5;
-                risks.push('No personal notes - may forget why you joined');
-            }
-
-            // Bonus: Personal/small server (lower risk)
-            if (server.memberCount < 50) {
-                score = Math.min(100, score + 10);
-            }
-
-            score = Math.max(0, Math.min(100, score));
-            return { score, risks };
-        }
-
-        function calculateAllPrivacyScores() {
-            state.servers.forEach(server => {
-                state.privacyScores[server.id] = calculatePrivacyScore(server.id);
-            });
-            console.log('Privacy scores calculated:', Object.keys(state.privacyScores).length, 'servers');
-        }
-
-        // ===== PHASE 2: NOTIFICATION ANALYZER =====
-        function estimateNotifications(serverId) {
-            const server = state.servers.find(s => s.id === serverId);
-            if (!server) return 0;
-
-            // Heuristic based on member count
-            // Very rough estimate: larger servers = more notifications
-            let estimate = 0;
-            
-            if (server.memberCount > 50000) {
-                estimate = 200; // ~200/day
-            } else if (server.memberCount > 10000) {
-                estimate = 100; // ~100/day
-            } else if (server.memberCount > 5000) {
-                estimate = 50;
-            } else if (server.memberCount > 1000) {
-                estimate = 20;
-            } else if (server.memberCount > 100) {
-                estimate = 5;
-            } else {
-                estimate = 1;
-            }
-
-            return estimate;
-        }
-
-        function calculateAllNotificationEstimates() {
-            state.servers.forEach(server => {
-                state.notificationEstimates[server.id] = estimateNotifications(server.id);
-            });
-            console.log('Notification estimates calculated:', Object.keys(state.notificationEstimates).length, 'servers');
-            console.log('Total estimated notifications/day:', getTotalEstimatedNotifications());
-        }
-
-        function getTotalEstimatedNotifications() {
-            return Object.values(state.notificationEstimates).reduce((sum, val) => sum + val, 0);
-        }
-
-        // ===== PHASE 2: SMART MUTE SUGGESTIONS =====
-        function generateMuteRecommendations() {
-            const recommendations = [];
-
-            state.servers.forEach(server => {
-                const daysSinceVisit = getDaysSinceVisit(server.id);
-                const notifications = estimateNotifications(server.id);
-                const health = state.serverHealth[server.id];
-
-                // High priority: Not visited in 60+ days AND high notifications
-                if (daysSinceVisit && daysSinceVisit > 60 && notifications > 50) {
-                    recommendations.push({
-                        serverId: server.id,
-                        serverName: server.name,
-                        reason: `Not visited in ${daysSinceVisit} days but getting ~${notifications} notifications/day`,
-                        priority: 'high',
-                        action: 'Mute or leave'
-                    });
-                }
-                // Medium priority: Large server with low health
-                else if (server.memberCount > 10000 && health && health.score < 50) {
-                    recommendations.push({
-                        serverId: server.id,
-                        serverName: server.name,
-                        reason: `Large server (${server.memberCount.toLocaleString()} members) with low health score`,
-                        priority: 'medium',
-                        action: 'Consider muting @everyone'
-                    });
-                }
-                // Low priority: Never visited but joined
-                else if (daysSinceVisit === null && notifications > 20) {
-                    recommendations.push({
-                        serverId: server.id,
-                        serverName: server.name,
-                        reason: 'Never tracked a visit but may be getting notifications',
-                        priority: 'low',
-                        action: 'Visit or mute'
-                    });
-                }
-            });
-
-            // Sort by priority
-            const priorityOrder = { high: 0, medium: 1, low: 2 };
-            recommendations.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-
-            state.muteRecommendations = recommendations;
-            console.log('Mute recommendations generated:', recommendations.length);
-            return recommendations;
-        }
-
         // ===== PHASE 2: SERVER COMPARISON =====
         function addToComparison(serverId) {
             if (!state.serverComparison.includes(serverId)) {
@@ -1534,24 +1384,24 @@
                                         }).join('')}
                                     </tr>
                                     <tr>
-                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Privacy Score</td>
-                                        ${servers.map(s => {
-                                            const privacy = state.privacyScores[s.id] || { score: 0 };
-                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${privacy.score}</td>`;
-                                        }).join('')}
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Est. Notifications/Day</td>
-                                        ${servers.map(s => {
-                                            const notifs = state.notificationEstimates[s.id] || 0;
-                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${notifs}</td>`;
-                                        }).join('')}
-                                    </tr>
-                                    <tr>
                                         <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Growth</td>
                                         ${servers.map(s => {
                                             const growth = getServerGrowth(s.id);
                                             return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${growth ? growth.percentChange + '%' : 'N/A'}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Last Visited</td>
+                                        ${servers.map(s => {
+                                            const days = getDaysSinceVisit(s.id);
+                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${days !== null ? days + 'd ago' : 'Never'}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">Has Notes</td>
+                                        ${servers.map(s => {
+                                            const hasNote = !!state.serverNotes[s.id];
+                                            return `<td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border);">${hasNote ? '✓' : '✗'}</td>`;
                                         }).join('')}
                                     </tr>
                                     <tr>
@@ -2494,26 +2344,14 @@
 
         function renderAnalyticsTab() {
             const roleMap = getAllRoles();
-            const totalNotifications = getTotalEstimatedNotifications();
-            const muteRecs = state.muteRecommendations;
-            
-            // Privacy analysis
-            const privacyScores = Object.values(state.privacyScores);
-            const avgPrivacy = privacyScores.length > 0 
-                ? Math.round(privacyScores.reduce((sum, p) => sum + p.score, 0) / privacyScores.length)
-                : 0;
-            const highRiskServers = state.servers.filter(s => {
-                const privacy = state.privacyScores[s.id];
-                return privacy && privacy.score < 50;
-            });
 
             return `
                 <div class="insight-grid">
                     <!-- Role Analyzer -->
                     <div class="insight-section">
-                        <h3>👤 Role Analyzer</h3>
+                        <h3>👤 Role & Permission Analyzer</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            All roles and permissions across your servers
+                            All roles and permissions across your servers (REAL DATA)
                         </p>
 
                         <div class="stats-grid" style="margin-bottom: 1.5rem;">
@@ -2531,7 +2369,8 @@
                             </div>
                         </div>
 
-                        ${Array.from(roleMap.entries()).slice(0, 10).map(([role, servers]) => {
+                        <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">Your Roles:</h4>
+                        ${Array.from(roleMap.entries()).map(([role, servers]) => {
                             const highestLevel = servers.some(s => s.level === 'high') ? 'high' : servers.some(s => s.level === 'medium') ? 'medium' : 'low';
                             const badgeColor = highestLevel === 'high' ? 'danger' : highestLevel === 'medium' ? 'warning' : 'secondary';
                             
@@ -2550,134 +2389,11 @@
                         }).join('')}
                     </div>
 
-                    <!-- Privacy Score -->
-                    <div class="insight-section">
-                        <h3>🔒 Privacy Score</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Data exposure and security risk assessment
-                        </p>
-
-                        <div style="text-align: center; padding: 2rem; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 1.5rem;">
-                            <div style="font-size: 3rem; font-weight: bold; color: ${avgPrivacy >= 70 ? 'var(--accent-primary)' : avgPrivacy >= 50 ? 'var(--accent-warning)' : 'var(--accent-danger)'};">
-                                ${avgPrivacy}
-                            </div>
-                            <div style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                                Average Privacy Score
-                            </div>
-                        </div>
-
-                        ${highRiskServers.length > 0 ? `
-                            <div class="warning-box">
-                                <strong>⚠️ ${highRiskServers.length} high-risk server${highRiskServers.length > 1 ? 's' : ''}</strong>
-                                <p style="margin-top: 0.5rem;">These servers have elevated privacy risks:</p>
-                            </div>
-                            ${highRiskServers.slice(0, 5).map(s => {
-                                const privacy = state.privacyScores[s.id];
-                                return `
-                                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                            <div style="font-weight: bold;">${s.name}</div>
-                                            <span style="color: var(--accent-danger); font-weight: bold;">${privacy.score}/100</span>
-                                        </div>
-                                        <ul style="margin: 0.5rem 0 0 1.5rem; color: var(--text-secondary); font-size: 0.85rem;">
-                                            ${privacy.risks.slice(0, 2).map(risk => `<li>${risk}</li>`).join('')}
-                                        </ul>
-                                    </div>
-                                `;
-                            }).join('')}
-                        ` : `
-                            <div class="info-box">
-                                <p><strong>✓ Good privacy posture!</strong></p>
-                                <p>No high-risk servers detected.</p>
-                            </div>
-                        `}
-                    </div>
-
-                    <!-- Notification Analyzer -->
-                    <div class="insight-section">
-                        <h3>🔔 Notification Analyzer</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Estimated notification volume across servers
-                        </p>
-
-                        <div style="text-align: center; padding: 2rem; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 1.5rem;">
-                            <div style="font-size: 3rem; font-weight: bold; color: var(--accent-secondary);">
-                                ~${totalNotifications}
-                            </div>
-                            <div style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                                Notifications Per Day
-                            </div>
-                        </div>
-
-                        <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">Top 5 Noisiest Servers:</h4>
-                        ${state.servers
-                            .sort((a, b) => (state.notificationEstimates[b.id] || 0) - (state.notificationEstimates[a.id] || 0))
-                            .slice(0, 5)
-                            .map(s => {
-                                const notifs = state.notificationEstimates[s.id] || 0;
-                                return `
-                                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <div>
-                                                <div style="font-weight: bold;">${s.name}</div>
-                                                <div style="color: var(--text-secondary); font-size: 0.85rem;">${s.memberCount.toLocaleString()} members</div>
-                                            </div>
-                                            <div style="text-align: right;">
-                                                <div style="font-weight: bold; color: var(--accent-warning);">~${notifs}/day</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                    </div>
-
-                    <!-- Smart Mute Suggestions -->
-                    <div class="insight-section">
-                        <h3>🔕 Smart Mute Suggestions</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            AI-powered recommendations to reduce notification fatigue
-                        </p>
-
-                        ${muteRecs.length > 0 ? `
-                            <div style="margin-bottom: 1rem;">
-                                <strong>${muteRecs.length} recommendation${muteRecs.length > 1 ? 's' : ''}</strong>
-                            </div>
-                            ${muteRecs.map(rec => {
-                                const priorityColors = {
-                                    high: 'var(--accent-danger)',
-                                    medium: 'var(--accent-warning)',
-                                    low: 'var(--accent-secondary)'
-                                };
-                                return `
-                                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid ${priorityColors[rec.priority]};">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                            <div style="font-weight: bold;">${rec.serverName}</div>
-                                            <span class="badge badge-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'secondary'}">
-                                                ${rec.priority.toUpperCase()}
-                                            </span>
-                                        </div>
-                                        <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
-                                            ${rec.reason}
-                                        </div>
-                                        <div style="color: var(--accent-primary); font-size: 0.85rem; font-weight: bold;">
-                                            💡 ${rec.action}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        ` : `
-                            <div class="info-box">
-                                <p><strong>✓ No mute suggestions!</strong></p>
-                                <p>Your server notification settings look good.</p>
-                            </div>
-                        `}
-                    </div>
-
                     <!-- Server Comparison -->
                     <div class="insight-section">
                         <h3>⚖️ Server Comparison</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Compare servers side-by-side
+                            Compare servers side-by-side (REAL DATA ONLY)
                         </p>
 
                         ${state.serverComparison.length > 0 ? `
@@ -2703,9 +2419,31 @@
                         ` : `
                             <div class="info-box">
                                 <p><strong>Add servers to compare</strong></p>
-                                <p>Go to the Servers tab and click on servers to add them to comparison (max 5).</p>
+                                <p>Go to the Servers tab and click ⚖️ "Compare" button on server cards to add them (max 5).</p>
                             </div>
                         `}
+                    </div>
+
+                    <!-- Coming Soon -->
+                    <div class="insight-section">
+                        <h3>🚀 Coming Soon: Real Activity Tracking</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Future features will include browser extension for REAL data
+                        </p>
+
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+                            <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">📱 Browser Extension (Phase 6)</h4>
+                            <ul style="color: var(--text-secondary); line-height: 1.8;">
+                                <li>✅ <strong>Real notification tracking</strong> - Actual count, not estimates</li>
+                                <li>✅ <strong>Activity heatmap</strong> - GitHub-style visualization</li>
+                                <li>✅ <strong>Message analytics</strong> - Which servers you actually use</li>
+                                <li>✅ <strong>Time tracking</strong> - How long you spend in each server</li>
+                                <li>✅ <strong>DM analytics</strong> - Private message patterns</li>
+                            </ul>
+                            <p style="color: var(--accent-secondary); margin-top: 1rem; font-weight: bold;">
+                                💡 All data will be stored locally - complete privacy!
+                            </p>
+                        </div>
                     </div>
                 </div>
             `;
