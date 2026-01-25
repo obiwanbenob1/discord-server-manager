@@ -1081,8 +1081,12 @@
             if (state.dmChannels.length === 0) {
                 return `
                     <div class="info-box">
-                        <p><strong>No DM data available</strong></p>
-                        <p>Try logging out and logging back in to grant DM access permissions.</p>
+                        <p><strong>DM Management Not Available</strong></p>
+                        <p>Discord's API doesn't provide access to DM channels through standard OAuth.</p>
+                        <p style="margin-top: 1rem;">You can still manage your DMs directly in Discord:</p>
+                        <a href="https://discord.com/channels/@me" target="_blank" class="btn" style="display: inline-block; margin-top: 1rem; text-decoration: none;">
+                            Open Discord DMs
+                        </a>
                     </div>
                 `;
             }
