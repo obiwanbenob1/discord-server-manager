@@ -773,6 +773,10 @@
             if (state.isAuthenticated) {
                 takeServerSnapshot();
                 calculateAllServerHealth();
+                checkReminders();
+                
+                // Check reminders periodically (every minute)
+                setInterval(checkReminders, 60000);
             }
         }
 
@@ -1346,6 +1350,133 @@
                         </div>
 
                         <button class="modal-close" onclick="closeModal()">Done</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        // ===== PHASE 1: SERVER DETAILS MODAL =====
+        function showServerDetailsModal(serverId) {
+            const server = state.servers.find(s => s.id === serverId);
+            if (!server) return;
+
+            const note = state.serverNotes[serverId] || '';
+            const reminder = state.serverReminders[serverId];
+            const health = state.serverHealth[serverId] || { score: 0, issues: [] };
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+                        <h2>📋 ${server.name}</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            ${server.memberCount.toLocaleString()} members ${server.owner ? '• You own this server' : ''}
+                        </p>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">📝 Notes</h3>
+                            <textarea 
+                                id="server-note-input"
+                                placeholder="Add personal notes about this server..."
+                                style="width: 100%; min-height: 100px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); padding: 0.75rem; border-radius: 8px; font-family: 'Space Mono', monospace; resize: vertical;"
+                            >${note}</textarea>
+                            <button class="btn btn-primary" onclick="setServerNote('${serverId}', document.getElementById('server-note-input').value); closeModal();" style="margin-top: 0.5rem; width: 100%;">
+                                Save Note
+                            </button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">⏰ Reminder</h3>
+                            ${reminder ? `
+                                <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                                    <div style="font-weight: bold; margin-bottom: 0.25rem;">Set for: ${new Date(reminder.date).toLocaleDateString()}</div>
+                                    <div style="color: var(--text-secondary);">${reminder.note}</div>
+                                </div>
+                                <button class="btn btn-danger" onclick="setServerReminder('${serverId}', null, null); closeModal();" style="width: 100%;">
+                                    Remove Reminder
+                                </button>
+                            ` : `
+                                <input type="date" id="reminder-date" style="width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); padding: 0.75rem; border-radius: 8px; font-family: 'Space Mono', monospace; margin-bottom: 0.5rem;">
+                                <input type="text" id="reminder-note" placeholder="Reminder message..." style="width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); padding: 0.75rem; border-radius: 8px; font-family: 'Space Mono', monospace; margin-bottom: 0.5rem;">
+                                <button class="btn btn-primary" onclick="setServerReminder('${serverId}', document.getElementById('reminder-date').value, document.getElementById('reminder-note').value); closeModal();" style="width: 100%;">
+                                    Set Reminder
+                                </button>
+                            `}
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">🏥 Health Score</h3>
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: ${getHealthColor(health.score)}; margin-bottom: 0.5rem;">
+                                    ${getHealthLabel(health.score)} - ${health.score}/100
+                                </div>
+                                ${health.issues.length > 0 ? `
+                                    <div style="margin-top: 1rem;">
+                                        <strong style="color: var(--text-secondary);">Issues Found:</strong>
+                                        <ul style="margin: 0.5rem 0 0 1.5rem; color: var(--text-secondary);">
+                                            ${health.issues.map(issue => `<li>${issue}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                ` : '<div style="color: var(--accent-primary);">✓ No issues found!</div>'}
+                            </div>
+                        </div>
+
+                        <button class="modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        // ===== PHASE 1: HEALTH MODAL (Quick View) =====
+        function showHealthModal(serverId) {
+            const server = state.servers.find(s => s.id === serverId);
+            if (!server) return;
+
+            const health = state.serverHealth[serverId] || { score: 0, issues: [] };
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 500px;">
+                        <h2>🏥 Health Check</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            ${server.name}
+                        </p>
+
+                        <div style="text-align: center; padding: 2rem; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 1.5rem;">
+                            <div style="font-size: 3rem; font-weight: bold; color: ${getHealthColor(health.score)};">
+                                ${health.score}
+                            </div>
+                            <div style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                ${getHealthLabel(health.score)}
+                            </div>
+                        </div>
+
+                        ${health.issues.length > 0 ? `
+                            <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+                                <strong style="color: var(--accent-warning);">⚠️ Issues Detected:</strong>
+                                <ul style="margin: 1rem 0 0 1.5rem; color: var(--text-secondary);">
+                                    ${health.issues.map(issue => `<li>${issue}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : `
+                            <div style="background: rgba(0, 255, 136, 0.1); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--accent-primary);">
+                                <strong style="color: var(--accent-primary);">✓ No Issues Found!</strong>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                                    This server is in excellent health. Keep it up!
+                                </p>
+                            </div>
+                        `}
+
+                        <button class="modal-close" onclick="closeModal()" style="margin-top: 1.5rem;">Close</button>
                     </div>
                 </div>
             `;
@@ -1979,22 +2110,51 @@
                         const categories = categorizeServer(server);
                         const growth = getServerGrowth(server.id);
                         const permissions = analyzePermissions(server);
+                        const isFavorite = state.favoriteServers.has(server.id);
+                        const health = state.serverHealth[server.id] || { score: 0, issues: [] };
+                        const hasNote = !!state.serverNotes[server.id];
+                        const hasReminder = !!state.serverReminders[server.id];
+                        const daysSinceVisit = getDaysSinceVisit(server.id);
 
                         return `
                             <div class="item-card ${isSelected ? 'selected' : ''}" style="animation-delay: ${i * 0.05}s">
-                                <div class="item-header">
+                                <div class="item-header" style="position: relative;">
                                     <input type="checkbox" class="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleServer('${server.id}')"/>
                                     <div class="item-icon">
                                         ${server.icon ? `<img src="${server.icon}" alt="${server.name}">` : server.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div class="item-info">
-                                        <div class="item-name">${server.name}</div>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <div class="item-name">${server.name}</div>
+                                            <button 
+                                                onclick="event.stopPropagation(); toggleFavorite('${server.id}')" 
+                                                style="background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 0.25rem;"
+                                                title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                                                ${isFavorite ? '⭐' : '☆'}
+                                            </button>
+                                            ${hasNote ? `
+                                                <span style="cursor: pointer; font-size: 1rem;" onclick="event.stopPropagation(); showServerDetailsModal('${server.id}')" title="Has notes">
+                                                    📝
+                                                </span>
+                                            ` : ''}
+                                            ${hasReminder ? `
+                                                <span style="cursor: pointer; font-size: 1rem;" onclick="event.stopPropagation(); showServerDetailsModal('${server.id}')" title="Has reminder">
+                                                    ⏰
+                                                </span>
+                                            ` : ''}
+                                        </div>
                                         <div class="item-subtitle">
                                             ${server.memberCount.toLocaleString()} members
                                             ${server.owner ? ' • Owner' : ''}
                                             ${growth ? ` • ${growth.trending === 'up' ? '📈' : growth.trending === 'down' ? '📉' : '➡️'} ${growth.percentChange}%` : ''}
+                                            ${daysSinceVisit !== null ? ` • Visited ${daysSinceVisit === 0 ? 'today' : daysSinceVisit + 'd ago'}` : ' • Never tracked'}
                                         </div>
                                         <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                            ${state.showHealthScores ? `
+                                                <span class="badge" style="background: ${getHealthColor(health.score)}20; border: 1px solid ${getHealthColor(health.score)}; color: ${getHealthColor(health.score)};" onclick="event.stopPropagation(); showHealthModal('${server.id}')" title="Click for details">
+                                                    ${getHealthLabel(health.score)} ${health.score}
+                                                </span>
+                                            ` : ''}
                                             ${categories.filter(c => c !== 'owned' && c !== 'large').map(cat => {
                                                 if (cat === 'uncategorized') {
                                                     return `<span class="badge badge-secondary">❓ Uncategorized</span>`;
@@ -2007,11 +2167,14 @@
                                             <button class="badge badge-secondary" onclick="event.stopPropagation(); showCategoryModal('${server.id}', '${server.name.replace(/'/g, "\\'")}');" style="cursor: pointer; border: 1px dashed var(--border); background: transparent;">
                                                 + Category
                                             </button>
+                                            <button class="badge badge-secondary" onclick="event.stopPropagation(); showServerDetailsModal('${server.id}');" style="cursor: pointer; border: 1px dashed var(--border); background: transparent;">
+                                                📝 Details
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
                                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                                    <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;">
+                                    <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;" onclick="recordVisit('${server.id}')">
                                         Open in Discord
                                     </a>
                                     ${!server.owner ? `
