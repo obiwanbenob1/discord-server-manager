@@ -647,55 +647,23 @@
             render();
         }
 
-        async function handleMassLeave() {
+        function openSelectedServers() {
             if (state.selectedServers.size === 0) return;
             
-            if (!confirm(`Are you sure you want to leave ${state.selectedServers.size} server(s)? This action cannot be undone.`)) {
-                return;
-            }
-
-            state.loading = true;
-            render();
-
             const selectedArray = Array.from(state.selectedServers);
-            const failed = [];
-            const succeeded = [];
-
-            try {
-                // Leave servers one at a time with delay to avoid rate limits
-                for (let i = 0; i < selectedArray.length; i++) {
-                    const serverId = selectedArray[i];
-                    try {
-                        await leaveGuild(serverId);
-                        succeeded.push(serverId);
-                        
-                        // Add delay between requests (500ms) to avoid rate limiting
-                        if (i < selectedArray.length - 1) {
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                        }
-                    } catch (error) {
-                        console.error(`Failed to leave server ${serverId}:`, error);
-                        failed.push(serverId);
-                    }
+            
+            if (selectedArray.length > 10) {
+                if (!confirm(`This will open ${selectedArray.length} Discord tabs. Are you sure?`)) {
+                    return;
                 }
-                
-                // Remove successfully left servers
-                state.servers = state.servers.filter(s => !succeeded.includes(s.id));
-                state.selectedServers = new Set(failed);
-                state.loading = false;
-                
-                if (failed.length > 0) {
-                    state.error = `Successfully left ${succeeded.length} server(s). Failed to leave ${failed.length} server(s). You may be the owner of these servers or lack permission to leave them.`;
-                } else {
-                    state.error = null;
-                }
-                
-                render();
-            } catch (error) {
-                state.error = 'Failed to leave servers: ' + error.message;
-                state.loading = false;
-                render();
             }
+            
+            // Open each server in a new tab
+            selectedArray.forEach(serverId => {
+                window.open(`https://discord.com/channels/${serverId}`, '_blank');
+            });
+            
+            alert(`Opened ${selectedArray.length} server(s) in Discord. You can now leave them manually by right-clicking the server icon → Leave Server`);
         }
 
         function updateSearch(value) {
@@ -722,7 +690,12 @@
                         ${state.error ? `<div class="error">Error: ${state.error}</div>` : ''}
 
                         <div class="info-box">
-                            <p>Analyze your Discord servers and identify which ones you're no longer active in. Mass-leave servers with one click to declutter your server list.</p>
+                            <p><strong>What this app does:</strong></p>
+                            <p>• Analyzes all your Discord servers and shows which ones you're inactive in</p>
+                            <p>• Identifies servers where you haven't posted in 30+ days</p>
+                            <p>• Provides quick links to open servers in Discord so you can leave them easily</p>
+                            <p>• Helps you declutter your server list without the hassle of checking each one manually</p>
+                            <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">Note: Due to Discord's API limitations, you'll need to manually confirm leaving each server in Discord. This app makes it easy by organizing and opening them for you!</p>
                         </div>
 
                         <div class="login-section">
@@ -806,8 +779,8 @@
                             <option value="members" ${state.sortBy === 'members' ? 'selected' : ''}>Member Count</option>
                         </select>
                         <button class="btn" onclick="selectInactive()">Select Inactive</button>
-                        <button class="btn btn-danger" onclick="handleMassLeave()" ${state.selectedServers.size === 0 || state.loading ? 'disabled' : ''}>
-                            ${state.loading ? 'Leaving...' : `Leave ${state.selectedServers.size} Server${state.selectedServers.size !== 1 ? 's' : ''}`}
+                        <button class="btn" onclick="openSelectedServers()" ${state.selectedServers.size === 0 ? 'disabled' : ''}>
+                            Open ${state.selectedServers.size} Selected
                         </button>
                     </div>
 
@@ -850,6 +823,20 @@
                                             <div class="stat-item-label">Messages (7d)</div>
                                             <div class="stat-item-value">${server.messagesLast7Days}</div>
                                         </div>
+                                    </div>
+                                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                                        <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;">
+                                            Open in Discord
+                                        </a>
+                                        ${!server.owner ? `
+                                            <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn btn-danger" style="text-decoration: none; text-align: center;" title="Opens Discord where you can leave this server">
+                                                Leave Server
+                                            </a>
+                                        ` : `
+                                            <button class="btn" disabled title="You own this server">
+                                                Owner
+                                            </button>
+                                        `}
                                     </div>
                                 </div>
                             `;
