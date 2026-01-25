@@ -710,14 +710,32 @@
             // UI state
             searchTerm: '',
             sortBy: 'name',
-            categoryFilter: 'all', // all, gaming, personal, work, large, owned, uncategorized
+            categoryFilter: 'all', // all, gaming, personal, work, large, owned, uncategorized, favorites
+            showHealthScores: true,
             
             // Manual categorization (stored in localStorage)
             serverCategories: {}, // { serverId: ['gaming', 'personal'] }
             
+            // Phase 1 Features (all stored in localStorage)
+            serverNotes: {}, // { serverId: 'My note about this server' }
+            serverReminders: {}, // { serverId: { date: timestamp, note: 'Reminder text' } }
+            favoriteServers: new Set(), // Set of server IDs
+            lastVisited: {}, // { serverId: timestamp }
+            serverHealth: {}, // { serverId: { score: 0-100, issues: [] } }
+            
             // Growth tracking (stored in localStorage)
             growthHistory: {}, // { serverId: [{ date, memberCount }] }
             lastSnapshot: null,
+            
+            // Advanced filters
+            advancedFilters: {
+                memberCountMin: null,
+                memberCountMax: null,
+                joinedAfter: null,
+                joinedBefore: null,
+                hasRole: null,
+                healthMin: null
+            },
             
             // Multi-account (future feature)
             accounts: []
@@ -735,16 +753,65 @@
             community: { emoji: '🌐', label: 'Community' }
         };
 
+        // Health score thresholds
+        const HEALTH_THRESHOLDS = {
+            excellent: 80,
+            good: 60,
+            warning: 40,
+            poor: 0
+        };
+
         // ===== INITIALIZATION =====
         function init() {
             loadGrowthHistory();
             loadServerCategories();
+            loadPhase1Data();
             handleOAuthCallback();
             render();
             
             // Take snapshot on login
             if (state.isAuthenticated) {
                 takeServerSnapshot();
+                calculateAllServerHealth();
+            }
+        }
+
+        // Load all Phase 1 data from localStorage
+        function loadPhase1Data() {
+            try {
+                // Server notes
+                const notes = localStorage.getItem('discord_server_notes');
+                if (notes) state.serverNotes = JSON.parse(notes);
+                
+                // Reminders
+                const reminders = localStorage.getItem('discord_server_reminders');
+                if (reminders) state.serverReminders = JSON.parse(reminders);
+                
+                // Favorites
+                const favorites = localStorage.getItem('discord_favorite_servers');
+                if (favorites) state.favoriteServers = new Set(JSON.parse(favorites));
+                
+                // Last visited
+                const visited = localStorage.getItem('discord_last_visited');
+                if (visited) state.lastVisited = JSON.parse(visited);
+                
+                // Health scores
+                const health = localStorage.getItem('discord_server_health');
+                if (health) state.serverHealth = JSON.parse(health);
+            } catch (e) {
+                console.warn('Failed to load Phase 1 data:', e);
+            }
+        }
+
+        function savePhase1Data() {
+            try {
+                localStorage.setItem('discord_server_notes', JSON.stringify(state.serverNotes));
+                localStorage.setItem('discord_server_reminders', JSON.stringify(state.serverReminders));
+                localStorage.setItem('discord_favorite_servers', JSON.stringify(Array.from(state.favoriteServers)));
+                localStorage.setItem('discord_last_visited', JSON.stringify(state.lastVisited));
+                localStorage.setItem('discord_server_health', JSON.stringify(state.serverHealth));
+            } catch (e) {
+                console.warn('Failed to save Phase 1 data:', e);
             }
         }
 
@@ -1072,6 +1139,221 @@
             }
             
             return suggestions;
+        }
+
+        // ===== PHASE 1: SERVER NOTES & REMINDERS =====
+        function setServerNote(serverId, note) {
+            if (note.trim()) {
+                state.serverNotes[serverId] = note.trim();
+            } else {
+                delete state.serverNotes[serverId];
+            }
+            savePhase1Data();
+            render();
+        }
+
+        function setServerReminder(serverId, date, note) {
+            if (date && note) {
+                state.serverReminders[serverId] = { date: new Date(date).getTime(), note: note.trim() };
+            } else {
+                delete state.serverReminders[serverId];
+            }
+            savePhase1Data();
+            render();
+        }
+
+        function checkReminders() {
+            const now = Date.now();
+            const due = Object.entries(state.serverReminders).filter(([id, reminder]) => reminder.date <= now);
+            
+            if (due.length > 0) {
+                const server = state.servers.find(s => s.id === due[0][0]);
+                if (server) {
+                    alert(`⏰ Reminder: ${due[0][1].note}\n\nServer: ${server.name}`);
+                    delete state.serverReminders[due[0][0]];
+                    savePhase1Data();
+                }
+            }
+        }
+
+        // ===== PHASE 1: FAVORITES =====
+        function toggleFavorite(serverId) {
+            if (state.favoriteServers.has(serverId)) {
+                state.favoriteServers.delete(serverId);
+            } else {
+                state.favoriteServers.add(serverId);
+            }
+            savePhase1Data();
+            render();
+        }
+
+        // ===== PHASE 1: LAST VISITED TRACKING =====
+        function recordVisit(serverId) {
+            state.lastVisited[serverId] = Date.now();
+            savePhase1Data();
+            calculateServerHealth(serverId);
+        }
+
+        function getDaysSinceVisit(serverId) {
+            if (!state.lastVisited[serverId]) return null;
+            const days = Math.floor((Date.now() - state.lastVisited[serverId]) / (1000 * 60 * 60 * 24));
+            return days;
+        }
+
+        // ===== PHASE 1: SERVER HEALTH SCORING =====
+        function calculateServerHealth(serverId) {
+            const server = state.servers.find(s => s.id === serverId);
+            if (!server) return;
+
+            let score = 100;
+            const issues = [];
+
+            // Check 1: Last visited (40 points max penalty)
+            const daysSinceVisit = getDaysSinceVisit(serverId);
+            if (daysSinceVisit === null) {
+                score -= 10;
+                issues.push('Never tracked visit');
+            } else if (daysSinceVisit > 90) {
+                score -= 40;
+                issues.push('Not visited in 90+ days');
+            } else if (daysSinceVisit > 60) {
+                score -= 30;
+                issues.push('Not visited in 60+ days');
+            } else if (daysSinceVisit > 30) {
+                score -= 20;
+                issues.push('Not visited in 30+ days');
+            }
+
+            // Check 2: Risky permissions (30 points max penalty)
+            const perms = analyzePermissions(server);
+            if (perms.some(p => p.level === 'high')) {
+                score -= 30;
+                issues.push('High-risk permissions (Admin)');
+            } else if (perms.some(p => p.level === 'medium')) {
+                score -= 15;
+                issues.push('Medium-risk permissions');
+            }
+
+            // Check 3: Server size (notification overload risk) (15 points max penalty)
+            if (server.memberCount > 50000) {
+                score -= 15;
+                issues.push('Very large server (50k+ members)');
+            } else if (server.memberCount > 10000) {
+                score -= 10;
+                issues.push('Large server (10k+ members)');
+            }
+
+            // Check 4: Uncategorized (10 points penalty)
+            const categories = categorizeServer(server);
+            if (categories.includes('uncategorized') && categories.length === 1) {
+                score -= 10;
+                issues.push('Not categorized');
+            }
+
+            // Check 5: No notes (5 points penalty)
+            if (!state.serverNotes[serverId]) {
+                score -= 5;
+                issues.push('No notes added');
+            }
+
+            score = Math.max(0, Math.min(100, score));
+
+            state.serverHealth[serverId] = { score, issues };
+            savePhase1Data();
+        }
+
+        function calculateAllServerHealth() {
+            state.servers.forEach(server => calculateServerHealth(server.id));
+        }
+
+        function getHealthColor(score) {
+            if (score >= HEALTH_THRESHOLDS.excellent) return 'var(--accent-primary)';
+            if (score >= HEALTH_THRESHOLDS.good) return 'var(--accent-secondary)';
+            if (score >= HEALTH_THRESHOLDS.warning) return 'var(--accent-warning)';
+            return 'var(--accent-danger)';
+        }
+
+        function getHealthLabel(score) {
+            if (score >= HEALTH_THRESHOLDS.excellent) return '🟢 Excellent';
+            if (score >= HEALTH_THRESHOLDS.good) return '🔵 Good';
+            if (score >= HEALTH_THRESHOLDS.warning) return '🟡 Review';
+            return '🔴 Poor';
+        }
+
+        // ===== PHASE 1: QUICK LEAVE WORKFLOW =====
+        function startQuickLeave() {
+            const selectedArray = Array.from(state.selectedServers);
+            const nonOwnedSelected = selectedArray.filter(id => {
+                const server = state.servers.find(s => s.id === id);
+                return server && !server.owner;
+            });
+
+            if (nonOwnedSelected.length === 0) {
+                alert('Please select non-owned servers to leave!');
+                return;
+            }
+
+            if (!confirm(`You're about to leave ${nonOwnedSelected.length} server(s). This will open them in Discord. Continue?`)) {
+                return;
+            }
+
+            showQuickLeaveModal(nonOwnedSelected);
+        }
+
+        function showQuickLeaveModal(serverIds) {
+            const servers = serverIds.map(id => state.servers.find(s => s.id === id)).filter(Boolean);
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
+                        <h2>🚪 Quick Leave Workflow</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Leaving ${servers.length} server(s). Check each one as you leave it.
+                        </p>
+                        
+                        <div style="max-height: 400px; overflow-y: auto; margin-bottom: 1.5rem;">
+                            ${servers.map((s, i) => `
+                                <div style="display: flex; align-items: center; padding: 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.75rem;">
+                                    <input type="checkbox" id="leave-check-${i}" style="margin-right: 1rem; width: 20px; height: 20px;">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold;">${s.name}</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
+                                    </div>
+                                    <a href="https://discord.com/channels/${s.id}" target="_blank" class="btn btn-primary" style="text-decoration: none;" onclick="recordVisit('${s.id}')">
+                                        Open →
+                                    </a>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="modal-steps">
+                            <div class="modal-step">
+                                <div class="step-number">1</div>
+                                <div class="step-text">Click "Open →" to open each server</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">2</div>
+                                <div class="step-text">Right-click the server icon in Discord</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">3</div>
+                                <div class="step-text">Click "Leave Server" and confirm</div>
+                            </div>
+                            <div class="modal-step">
+                                <div class="step-number">4</div>
+                                <div class="step-text">Check the box here after leaving</div>
+                            </div>
+                        </div>
+
+                        <button class="modal-close" onclick="closeModal()">Done</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
         }
 
         // ===== DUPLICATE DETECTION =====
@@ -1445,7 +1727,9 @@
             );
             
             // Category filter
-            if (state.categoryFilter !== 'all') {
+            if (state.categoryFilter === 'favorites') {
+                filtered = filtered.filter(s => state.favoriteServers.has(s.id));
+            } else if (state.categoryFilter !== 'all') {
                 filtered = filtered.filter(s => 
                     categorizeServer(s).includes(state.categoryFilter)
                 );
@@ -1455,6 +1739,16 @@
             return filtered.sort((a, b) => {
                 if (state.sortBy === 'members') return b.memberCount - a.memberCount;
                 if (state.sortBy === 'name') return a.name.localeCompare(b.name);
+                if (state.sortBy === 'health') {
+                    const healthA = state.serverHealth[a.id]?.score || 0;
+                    const healthB = state.serverHealth[b.id]?.score || 0;
+                    return healthB - healthA;
+                }
+                if (state.sortBy === 'visited') {
+                    const visitedA = state.lastVisited[a.id] || 0;
+                    const visitedB = state.lastVisited[b.id] || 0;
+                    return visitedB - visitedA;
+                }
                 if (state.sortBy === 'growth') {
                     const growthA = getServerGrowth(a.id);
                     const growthB = getServerGrowth(b.id);
@@ -1637,6 +1931,9 @@
                     <div class="category-chip ${state.categoryFilter === 'all' ? 'active' : ''}" onclick="updateCategoryFilter('all')">
                         All Servers
                     </div>
+                    <div class="category-chip ${state.categoryFilter === 'favorites' ? 'active' : ''}" onclick="updateCategoryFilter('favorites')">
+                        ⭐ Favorites (${state.favoriteServers.size})
+                    </div>
                     <div class="category-chip ${state.categoryFilter === 'uncategorized' ? 'active' : ''}" onclick="updateCategoryFilter('uncategorized')">
                         ❓ Uncategorized
                     </div>
@@ -1659,12 +1956,17 @@
                         <option value="name" ${state.sortBy === 'name' ? 'selected' : ''}>Name (A-Z)</option>
                         <option value="members" ${state.sortBy === 'members' ? 'selected' : ''}>Member Count</option>
                         <option value="growth" ${state.sortBy === 'growth' ? 'selected' : ''}>Growth</option>
+                        <option value="health" ${state.sortBy === 'health' ? 'selected' : ''}>Health Score</option>
+                        <option value="visited" ${state.sortBy === 'visited' ? 'selected' : ''}>Last Visited</option>
                     </select>
                     <button class="btn" onclick="selectAll()">Select All</button>
                     <button class="btn" onclick="deselectAll()">Deselect All</button>
                     <button class="btn" onclick="selectSmallServers()">Select Small</button>
                     <button class="btn" onclick="showBulkCategoryModal()" ${stats.selected === 0 ? 'disabled' : ''}>
                         📁 Categorize ${stats.selected}
+                    </button>
+                    <button class="btn btn-danger" onclick="startQuickLeave()" ${stats.selected === 0 ? 'disabled' : ''}>
+                        🚪 Quick Leave ${stats.selected}
                     </button>
                     <button class="btn btn-primary" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
                         Open ${stats.selected} Selected
