@@ -1166,13 +1166,20 @@
 
         function renderInsightsTab() {
             const ownedServers = state.servers.filter(s => s.owner);
-            const serversWithNicknames = state.servers.filter(s => Math.random() > 0.7); // Simulated
+            const largeServers = state.servers.filter(s => s.memberCount > 1000).sort((a, b) => b.memberCount - a.memberCount);
+            const smallServers = state.servers.filter(s => s.memberCount < 50);
+            const activeServers = state.servers.filter(s => (Date.now() - new Date(s.lastMessageDate)) / (1000 * 60 * 60 * 24) < 7);
+            const totalMembers = state.servers.reduce((sum, s) => sum + s.memberCount, 0);
+            const avgMembers = Math.round(totalMembers / state.servers.length);
 
             return `
                 <div class="insight-grid">
                     ${state.connections.length > 0 ? `
                         <div class="insight-section">
-                            <h3>Connected Accounts</h3>
+                            <h3>🔗 Connected Accounts</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                Accounts you've linked to Discord for rich presence and integrations
+                            </p>
                             ${state.connections.map(conn => `
                                 <div class="connection-item">
                                     <div class="connection-icon">${conn.type.charAt(0).toUpperCase()}</div>
@@ -1183,14 +1190,24 @@
                                 </div>
                             `).join('')}
                             <a href="https://discord.com/settings/connections" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center; margin-top: 1rem;">
-                                Manage Connections
+                                Manage Connections in Discord
                             </a>
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div class="insight-section">
+                            <h3>🔗 Connected Accounts</h3>
+                            <p style="color: var(--text-secondary);">
+                                No connected accounts found. Link accounts like Spotify, Xbox, or GitHub to show your activity and gaming status on Discord!
+                            </p>
+                            <a href="https://discord.com/settings/connections" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center; margin-top: 1rem;">
+                                Connect Accounts
+                            </a>
+                        </div>
+                    `}
 
                     <div class="insight-section">
-                        <h3>Server Summary</h3>
-                        <div class="item-stats">
+                        <h3>📊 Server Overview</h3>
+                        <div class="item-stats" style="margin-bottom: 1.5rem;">
                             <div class="stat-item">
                                 <div class="stat-item-label">Total Servers</div>
                                 <div class="stat-item-value">${state.servers.length}</div>
@@ -1200,39 +1217,139 @@
                                 <div class="stat-item-value">${ownedServers.length}</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-item-label">With Custom Nickname</div>
-                                <div class="stat-item-value">${serversWithNicknames.length}</div>
+                                <div class="stat-item-label">Active Servers (7d)</div>
+                                <div class="stat-item-value">${activeServers.length}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Total Members</div>
+                                <div class="stat-item-value">${totalMembers.toLocaleString()}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Avg Members/Server</div>
+                                <div class="stat-item-value">${avgMembers.toLocaleString()}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Large Servers (1000+)</div>
+                                <div class="stat-item-value">${largeServers.length}</div>
                             </div>
                         </div>
 
                         ${ownedServers.length > 0 ? `
                             <div style="margin-top: 1.5rem;">
-                                <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">Servers You Own:</h4>
+                                <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">👑 Servers You Own:</h4>
                                 ${ownedServers.map(s => `
-                                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 0.5rem;">
-                                        ${s.name} (${s.memberCount.toLocaleString()} members)
+                                    <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
+                                            <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
+                                        </div>
+                                        <a href="https://discord.com/channels/${s.id}" target="_blank" class="btn" style="text-decoration: none;">
+                                            Manage
+                                        </a>
                                     </div>
                                 `).join('')}
                             </div>
                         ` : ''}
                     </div>
 
-                    <div class="insight-section">
-                        <h3>Quick Stats</h3>
-                        <div class="item-stats">
-                            <div class="stat-item">
-                                <div class="stat-item-label">Total DMs</div>
-                                <div class="stat-item-value">${state.dmChannels.length}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Connections</div>
-                                <div class="stat-item-value">${state.connections.length}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Total Members Across Servers</div>
-                                <div class="stat-item-value">${state.servers.reduce((sum, s) => sum + s.memberCount, 0).toLocaleString()}</div>
+                    ${largeServers.length > 0 ? `
+                        <div class="insight-section">
+                            <h3>🏆 Largest Communities</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                Your biggest servers by member count
+                            </p>
+                            ${largeServers.slice(0, 5).map((s, i) => `
+                                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+                                    <div style="background: var(--accent-primary); color: var(--bg-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
+                                        ${i + 1}
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+
+                    ${smallServers.length > 0 ? `
+                        <div class="insight-section">
+                            <h3>👥 Small & Personal Servers</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                ${smallServers.length} server${smallServers.length !== 1 ? 's' : ''} with fewer than 50 members - likely friend groups or personal servers
+                            </p>
+                            <div class="item-stats">
+                                <div class="stat-item">
+                                    <div class="stat-item-label">Small Servers</div>
+                                    <div class="stat-item-value">${smallServers.length}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-item-label">Total Members</div>
+                                    <div class="stat-item-value">${smallServers.reduce((sum, s) => sum + s.memberCount, 0).toLocaleString()}</div>
+                                </div>
                             </div>
                         </div>
+                    ` : ''}
+
+                    <div class="insight-section">
+                        <h3>📈 Activity Analysis</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Based on recent message activity across your servers
+                        </p>
+                        <div class="item-stats" style="margin-bottom: 1.5rem;">
+                            <div class="stat-item">
+                                <div class="stat-item-label">Active (Last 7d)</div>
+                                <div class="stat-item-value">${activeServers.length}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-item-label">Activity Rate</div>
+                                <div class="stat-item-value">${Math.round((activeServers.length / state.servers.length) * 100)}%</div>
+                            </div>
+                        </div>
+
+                        ${activeServers.length > 0 ? `
+                            <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">🔥 Most Active Servers:</h4>
+                            ${activeServers.slice(0, 5).map(s => `
+                                <div style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem;">
+                                    <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
+                                    <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                        ${s.messagesLast7Days} messages in last 7 days • Last message ${formatDate(s.lastMessageDate)}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        ` : ''}
+                    </div>
+
+                    <div class="insight-section">
+                        <h3>💡 Recommendations</h3>
+                        <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                            <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-primary);">
+                                ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length > 0 
+                                    ? '⚠️ You have inactive servers' 
+                                    : '✅ Your server list looks clean!'}
+                            </div>
+                            <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                                ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length > 0
+                                    ? `You haven't been active in ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length} server(s) for over 90 days. Consider leaving them to declutter your server list.`
+                                    : 'You actively participate in most of your servers. Nice job staying engaged!'}
+                            </div>
+                            ${state.servers.filter(s => (Date.now() - new Date(s.yourLastActivity)) / (1000 * 60 * 60 * 24) > 90).length > 0 ? `
+                                <button class="btn" onclick="switchTab('servers'); selectInactiveServers();" style="margin-top: 1rem; width: 100%;">
+                                    Go to Servers & Select Inactive
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        ${largeServers.length > 0 ? `
+                            <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--accent-secondary);">
+                                    💬 You're in ${largeServers.length} large communit${largeServers.length === 1 ? 'y' : 'ies'}
+                                </div>
+                                <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    Large servers can be overwhelming. Make sure you're getting value from them!
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -1303,9 +1420,6 @@
                             <button class="tab ${state.currentTab === 'servers' ? 'active' : ''}" onclick="switchTab('servers')">
                                 Servers (${state.servers.length})
                             </button>
-                            <button class="tab ${state.currentTab === 'dms' ? 'active' : ''}" onclick="switchTab('dms')">
-                                DMs (${state.dmChannels.length})
-                            </button>
                             <button class="tab ${state.currentTab === 'insights' ? 'active' : ''}" onclick="switchTab('insights')">
                                 Insights
                             </button>
@@ -1313,7 +1427,6 @@
                     ` : ''}
 
                     ${state.currentTab === 'servers' ? renderServersTab() : ''}
-                    ${state.currentTab === 'dms' ? renderDMsTab() : ''}
                     ${state.currentTab === 'insights' ? renderInsightsTab() : ''}
                 </div>
             `;
