@@ -173,7 +173,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 1.5rem;
             margin-bottom: 3rem;
             animation: fadeIn 0.8s ease-out;
@@ -183,9 +183,11 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 1.5rem;
+            padding: 1.5rem 1rem;
             text-align: center;
             transition: all 0.3s ease;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .stat-card:hover {
@@ -207,6 +209,27 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-top: 0.5rem;
+            line-height: 1.2;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--accent-primary);
+            font-family: 'Archivo Black', sans-serif;
+            line-height: 1;
+            word-break: break-all;
+        }
+
+        @media (max-width: 768px) {
+            .stat-value {
+                font-size: 2rem;
+            }
+            .stat-label {
+                font-size: 0.75rem;
+            }
         }
 
         .controls {
@@ -1679,7 +1702,6 @@
         }
 
         function renderToolsTab() {
-            const duplicates = findDuplicateServers();
             const highRiskServers = state.servers.filter(s => {
                 const perms = analyzePermissions(s);
                 return perms.some(p => p.level === 'high');
@@ -1702,25 +1724,6 @@
                                 💡 <strong>Tip:</strong> Select servers on the Servers tab, then use "📁 Categorize" to organize them in bulk!
                             </p>
                         </div>
-                    </div>
-
-                    <div class="insight-section">
-                        <h3>🔍 Duplicate Detector</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                            Find servers you might be in multiple times
-                        </p>
-                        ${duplicates.length > 0 ? `
-                            <div class="warning-box">
-                                <strong>⚠️ ${duplicates.length} potential duplicate${duplicates.length > 1 ? 's' : ''} found!</strong>
-                                <p style="margin-top: 0.5rem;">You may be in the same community multiple times.</p>
-                            </div>
-                            <button class="btn btn-primary" onclick="showDuplicateModal()">View Duplicates</button>
-                        ` : `
-                            <div class="info-box">
-                                <p><strong>✅ No duplicates found!</strong></p>
-                                <p>You don't appear to be in any servers multiple times.</p>
-                            </div>
-                        `}
                     </div>
 
                     <div class="insight-section">
@@ -1764,7 +1767,50 @@
                                     Tracking ${Object.keys(state.growthHistory).length} servers with ${Object.values(state.growthHistory).reduce((sum, h) => sum + h.length, 0)} total data points.
                                 </p>
                             </div>
-                            ${state.servers.filter(s => getServerGrowth(s.id)).slice(0, 5).map(s => {
+                            
+                            ${(() => {
+                                const growingServers = state.servers.filter(s => {
+                                    const growth = getServerGrowth(s.id);
+                                    return growth && growth.change > 0;
+                                }).length;
+                                
+                                const shrinkingServers = state.servers.filter(s => {
+                                    const growth = getServerGrowth(s.id);
+                                    return growth && growth.change < 0;
+                                }).length;
+                                
+                                const stableServers = state.servers.filter(s => {
+                                    const growth = getServerGrowth(s.id);
+                                    return growth && growth.change === 0;
+                                }).length;
+                                
+                                return `
+                                    <div style="margin: 1.5rem 0;">
+                                        <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">📊 Growth Overview</h4>
+                                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                                            <div style="background: rgba(0, 255, 136, 0.1); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 1rem; text-align: center;">
+                                                <div style="font-size: 2rem; color: var(--accent-primary); font-weight: bold;">📈 ${growingServers}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Growing</div>
+                                            </div>
+                                            <div style="background: rgba(255, 51, 102, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px; padding: 1rem; text-align: center;">
+                                                <div style="font-size: 2rem; color: var(--accent-danger); font-weight: bold;">📉 ${shrinkingServers}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Shrinking</div>
+                                            </div>
+                                            <div style="background: rgba(139, 157, 195, 0.1); border: 1px solid var(--text-secondary); border-radius: 8px; padding: 1rem; text-align: center;">
+                                                <div style="font-size: 2rem; color: var(--text-secondary); font-weight: bold;">➡️ ${stableServers}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Stable</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            })()}
+                            
+                            <h4 style="color: var(--accent-secondary); margin: 1.5rem 0 1rem;">🏆 Top Movers</h4>
+                            ${state.servers.filter(s => getServerGrowth(s.id)).sort((a, b) => {
+                                const growthA = getServerGrowth(a.id);
+                                const growthB = getServerGrowth(b.id);
+                                return Math.abs(growthB.change) - Math.abs(growthA.change);
+                            }).slice(0, 5).map(s => {
                                 const growth = getServerGrowth(s.id);
                                 return `
                                     <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
@@ -1777,7 +1823,7 @@
                                             </div>
                                             <div style="text-align: right;">
                                                 <div style="font-weight: bold; color: var(--accent-${growth.trending === 'up' ? 'primary' : growth.trending === 'down' ? 'danger' : 'secondary'});">
-                                                    ${growth.trending === 'up' ? '📈' : growth.trending === 'down' ? '📉' : '➡️'} ${growth.percentChange}%
+                                                    ${growth.trending === 'up' ? '📈' : growth.trending === 'down' ? '📉' : '➡️'} ${growth.change > 0 ? '+' : ''}${growth.change.toLocaleString()} (${growth.percentChange}%)
                                                 </div>
                                                 <div style="color: var(--text-secondary); font-size: 0.85rem;">
                                                     ${growth.dataPoints} snapshots
@@ -1790,7 +1836,7 @@
                         ` : `
                             <div class="info-box">
                                 <p><strong>📊 Growth tracking started!</strong></p>
-                                <p style="margin-top: 0.5rem;">Come back tomorrow to see member count changes.</p>
+                                <p style="margin-top: 0.5rem;">Come back tomorrow to see member count changes and trending data.</p>
                             </div>
                         `}
                     </div>
@@ -1915,6 +1961,226 @@
             `;
         }
 
+        function renderGuideTab() {
+            return `
+                <div class="insight-grid">
+                    <div class="insight-section">
+                        <h3>🛡️ Essential Discord Safety</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Protect yourself from scams, phishing, and security threats
+                        </p>
+                        
+                        <div class="warning-box">
+                            <strong>⚠️ Never share these with ANYONE:</strong>
+                            <ul style="margin: 0.5rem 0 0 1.5rem;">
+                                <li>Your Discord password</li>
+                                <li>2FA/Authentication codes</li>
+                                <li>QR codes for "Nitro" or "free items"</li>
+                                <li>Your email password</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 1.5rem 0 0.75rem;">🎣 Common Scams to Avoid</h4>
+                        
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                            <div style="font-weight: bold; margin-bottom: 0.5rem;">❌ Fake "Free Nitro" Links</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                Scammers send fake Discord Nitro offers. <strong>Discord NEVER DMs you</strong> to give free Nitro. 
+                                If a link ends in anything other than discord.com or discord.gift, it's fake!
+                            </p>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                            <div style="font-weight: bold; margin-bottom: 0.5rem;">❌ QR Code Scams</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                Never scan a QR code someone sends you, even if it's "for Nitro" or "to verify your account."
+                                QR codes can instantly log you into Discord on their device and steal your account!
+                            </p>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                            <div style="font-weight: bold; margin-bottom: 0.5rem;">❌ Impersonation Scams</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                Scammers copy usernames/avatars of friends, staff, or moderators. Always check the actual username 
+                                (not just the display name) and server roles before trusting anyone.
+                            </p>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                            <div style="font-weight: bold; margin-bottom: 0.5rem;">❌ "You've been reported" Scams</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                Fake "Discord Trust & Safety" accounts claim you've been reported and need to verify your account.
+                                <strong>Real Discord staff will NEVER DM you first!</strong>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="insight-section">
+                        <h3>🔒 Privacy & Security Settings</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Recommended security configurations
+                        </p>
+
+                        <h4 style="color: var(--accent-primary); margin-bottom: 0.75rem;">Enable Two-Factor Authentication (2FA)</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                <strong>Settings → My Account → Enable Two-Factor Auth</strong>
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                This adds an extra layer of security. Even if someone gets your password, they can't log in without your phone.
+                            </p>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 1.5rem 0 0.75rem;">Disable DMs from Server Members</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                <strong>Right-click any server → Privacy Settings → Turn off "Direct Messages"</strong>
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                This prevents random people in large servers from DMing you scams. Do this for every server you don't fully trust.
+                            </p>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 1.5rem 0 0.75rem;">Review Authorized Apps</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                <strong>Settings → Authorized Apps</strong>
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                Remove any apps you don't recognize or no longer use. Be careful what you authorize!
+                            </p>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 1.5rem 0 0.75rem;">Limit Friend Requests</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                <strong>Settings → Privacy & Safety → Turn off "Allow friend requests from server members"</strong>
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                Reduces spam friend requests from bots and scammers in large servers.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="insight-section">
+                        <h3>💡 Advanced Discord Tips</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Power user features you might not know about
+                        </p>
+
+                        <h4 style="color: var(--accent-secondary); margin-bottom: 0.75rem;">Server Organization</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>• Create Server Folders:</strong> Right-click a server → "Create Folder" to organize by category
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>• Mute Servers:</strong> Right-click → "Mute Server" → Choose duration
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                <strong>• Hide Muted Servers:</strong> Right-click folder → "Hide Muted Servers"
+                            </p>
+                        </div>
+
+                        <h4 style="color: var(--accent-secondary); margin: 1.5rem 0 0.75rem;">Notification Management</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>• Suppress @everyone:</strong> Right-click server → Notification Settings → Suppress @everyone and @here
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>• Only @mentions:</strong> Set notification to "Only @mentions" for noisy servers
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                <strong>• Channel-specific:</strong> Mute individual channels while keeping server notifications
+                            </p>
+                        </div>
+
+                        <h4 style="color: var(--accent-secondary); margin: 1.5rem 0 0.75rem;">Keyboard Shortcuts</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>Ctrl/Cmd + K:</strong> Quick server/channel switcher
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>Ctrl/Cmd + /:</strong> Search for slash commands
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>Alt + Up/Down:</strong> Jump between unread channels
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                <strong>Shift + Esc:</strong> Mark server as read
+                            </p>
+                        </div>
+
+                        <h4 style="color: var(--accent-secondary); margin: 1.5rem 0 0.75rem;">Data Management</h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>• Request Your Data:</strong> Settings → Privacy & Safety → "Request all of my Data"
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <strong>• Clear Cache:</strong> Settings → Advanced → "Clear Cache" (fixes weird glitches)
+                            </p>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                <strong>• Download Messages:</strong> Use DiscordChatExporter (third-party tool) to backup chats
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="insight-section">
+                        <h3>🚨 If You've Been Compromised</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Quick action steps if your account is hacked
+                        </p>
+
+                        <div class="warning-box">
+                            <strong>Act immediately if you notice:</strong>
+                            <ul style="margin: 0.5rem 0 0 1.5rem;">
+                                <li>Messages you didn't send</li>
+                                <li>Servers you didn't join</li>
+                                <li>Friends you didn't add</li>
+                                <li>Sessions from unknown devices</li>
+                            </ul>
+                        </div>
+
+                        <div style="margin-top: 1.5rem;">
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid var(--accent-danger);">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">1️⃣ Change Password Immediately</div>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    Settings → My Account → Change Password. Use a strong, unique password.
+                                </p>
+                            </div>
+
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid var(--accent-danger);">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">2️⃣ Enable 2FA</div>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    If you haven't already, enable Two-Factor Authentication to prevent future attacks.
+                                </p>
+                            </div>
+
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid var(--accent-danger);">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">3️⃣ Log Out All Sessions</div>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    Settings → My Account → "Log out of all known devices"
+                                </p>
+                            </div>
+
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 3px solid var(--accent-danger);">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">4️⃣ Remove Unauthorized Apps</div>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    Settings → Authorized Apps → Remove any apps you don't recognize
+                                </p>
+                            </div>
+
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent-danger);">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">5️⃣ Contact Discord Support</div>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                                    Visit support.discord.com to report the compromise and get help recovering your account.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function render() {
             const app = document.getElementById('app');
             
@@ -1924,9 +2190,54 @@
                     <div class="container">
                         <div class="header">
                             <div style="margin-bottom: 2rem;">
-                                <div style="width: 120px; height: 120px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 4rem; box-shadow: 0 10px 40px var(--shadow);">
-                                    📊
-                                </div>
+                                <svg width="120" height="120" viewBox="0 0 120 120" style="margin: 0 auto; display: block; filter: drop-shadow(0 10px 40px rgba(0, 255, 136, 0.3));">
+                                    <!-- Background circle with gradient -->
+                                    <defs>
+                                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:1" />
+                                        </linearGradient>
+                                        <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#ff3366;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#ffaa00;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    
+                                    <!-- Main circle -->
+                                    <circle cx="60" cy="60" r="55" fill="url(#logoGradient)" opacity="0.2"/>
+                                    <circle cx="60" cy="60" r="55" fill="none" stroke="url(#logoGradient)" stroke-width="3"/>
+                                    
+                                    <!-- Server/Network nodes -->
+                                    <circle cx="60" cy="30" r="8" fill="url(#logoGradient)"/>
+                                    <circle cx="35" cy="50" r="8" fill="url(#logoGradient)"/>
+                                    <circle cx="85" cy="50" r="8" fill="url(#logoGradient)"/>
+                                    <circle cx="45" cy="80" r="8" fill="url(#logoGradient)"/>
+                                    <circle cx="75" cy="80" r="8" fill="url(#logoGradient)"/>
+                                    
+                                    <!-- Center hub (Discord-style) -->
+                                    <circle cx="60" cy="60" r="12" fill="#0a0e27"/>
+                                    <circle cx="60" cy="60" r="12" fill="none" stroke="url(#accentGradient)" stroke-width="2.5"/>
+                                    
+                                    <!-- Connection lines -->
+                                    <line x1="60" y1="30" x2="60" y2="48" stroke="url(#logoGradient)" stroke-width="2" opacity="0.6"/>
+                                    <line x1="35" y1="50" x2="48" y2="56" stroke="url(#logoGradient)" stroke-width="2" opacity="0.6"/>
+                                    <line x1="85" y1="50" x2="72" y2="56" stroke="url(#logoGradient)" stroke-width="2" opacity="0.6"/>
+                                    <line x1="45" y1="80" x2="54" y2="68" stroke="url(#logoGradient)" stroke-width="2" opacity="0.6"/>
+                                    <line x1="75" y1="80" x2="66" y2="68" stroke="url(#logoGradient)" stroke-width="2" opacity="0.6"/>
+                                    
+                                    <!-- AI/Tech accent - circuit pattern -->
+                                    <path d="M 60 55 L 60 48 M 56 60 L 48 60 M 64 60 L 72 60 M 60 65 L 60 72" 
+                                          stroke="url(#accentGradient)" 
+                                          stroke-width="1.5" 
+                                          fill="none" 
+                                          opacity="0.8"/>
+                                    
+                                    <!-- Small pulse circles for tech feel -->
+                                    <circle cx="60" cy="60" r="4" fill="url(#accentGradient)">
+                                        <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+                                        <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+                                    </circle>
+                                </svg>
                             </div>
                             <h1>Discord Manager</h1>
                             <p class="subtitle">Complete Discord Server Management Suite</p>
@@ -1948,7 +2259,7 @@
                                     <p>• <strong>Security Audit:</strong> Find servers with elevated permissions</p>
                                     <p>• <strong>Bulk Actions:</strong> Manage multiple servers at once</p>
                                     <p>• <strong>Export Data:</strong> Download your server list as CSV/JSON</p>
-                                    <p>• <strong>Duplicate Detection:</strong> Find servers you're in multiple times</p>
+                                    <p>• <strong>Advanced Filtering:</strong> Sort and filter by any criteria</p>
                                 </div>
                             </div>
 
@@ -2044,12 +2355,16 @@
                             <button class="tab ${state.currentTab === 'insights' ? 'active' : ''}" onclick="switchTab('insights')">
                                 📊 Insights
                             </button>
+                            <button class="tab ${state.currentTab === 'guide' ? 'active' : ''}" onclick="switchTab('guide')">
+                                🛡️ Safety Guide
+                            </button>
                         </div>
                     ` : ''}
 
                     ${state.currentTab === 'servers' ? renderServersTab() : ''}
                     ${state.currentTab === 'tools' ? renderToolsTab() : ''}
                     ${state.currentTab === 'insights' ? renderInsightsTab() : ''}
+                    ${state.currentTab === 'guide' ? renderGuideTab() : ''}
                 </div>
             `;
         }
