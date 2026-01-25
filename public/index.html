@@ -1165,6 +1165,137 @@
             render();
         }
 
+        function showPrivacyPolicy() {
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 800px;">
+                        <h2>Privacy Policy</h2>
+                        <div style="color: var(--text-secondary); max-height: 60vh; overflow-y: auto;">
+                            <p style="margin-bottom: 1rem;"><strong>Last Updated:</strong> January 25, 2026</p>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">What We Collect</h3>
+                            <p>Discord Manager uses Discord OAuth to access:</p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>Your Discord username and ID</li>
+                                <li>List of Discord servers you're in (names, member counts, icons)</li>
+                                <li>Your connected accounts (if granted permission)</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">What We DON'T Collect</h3>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>Your Discord password (we never see it)</li>
+                                <li>Your messages or DMs</li>
+                                <li>Any personal information beyond what Discord OAuth provides</li>
+                                <li>Analytics or tracking data</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">How We Store Data</h3>
+                            <p><strong>On Our Servers:</strong> We DO NOT store any of your Discord data on our servers. All data is fetched in real-time from Discord's API when you login.</p>
+                            <p><strong>In Your Browser:</strong> The following is stored locally in your browser using localStorage:</p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>Your server categories (custom tags you create)</li>
+                                <li>Server growth snapshots (member count history)</li>
+                                <li>Your login token (to keep you logged in)</li>
+                            </ul>
+                            <p>This data never leaves your computer and can be cleared by logging out or clearing your browser data.</p>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Third-Party Services</h3>
+                            <p>We use:</p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li><strong>Discord OAuth:</strong> For authentication (governed by Discord's privacy policy)</li>
+                                <li><strong>Render.com:</strong> For hosting (no user data stored)</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Your Rights</h3>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>You can revoke access anytime in Discord Settings → Authorized Apps</li>
+                                <li>You can clear all local data by logging out</li>
+                                <li>You can export your data using our CSV/JSON export features</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Contact</h3>
+                            <p>Questions about privacy? Contact <a href="https://x.com/ObiWanBENobiETH" target="_blank" style="color: var(--accent-secondary);">@ObiWanBENobiETH on Twitter/X</a></p>
+                        </div>
+                        <button class="modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        function showTerms() {
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 800px;">
+                        <h2>Terms of Service</h2>
+                        <div style="color: var(--text-secondary); max-height: 60vh; overflow-y: auto;">
+                            <p style="margin-bottom: 1rem;"><strong>Last Updated:</strong> January 25, 2026</p>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Acceptance of Terms</h3>
+                            <p>By using Discord Manager, you agree to these terms. If you don't agree, please don't use the service.</p>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Description of Service</h3>
+                            <p>Discord Manager is a free tool that helps you organize and manage your Discord servers. It provides:</p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>Server categorization and organization</li>
+                                <li>Growth tracking and analytics</li>
+                                <li>Bulk management tools</li>
+                                <li>Data export capabilities</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">User Responsibilities</h3>
+                            <p>You agree to:</p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>Use the service in compliance with Discord's Terms of Service</li>
+                                <li>Not use the service for any illegal purposes</li>
+                                <li>Not attempt to hack, exploit, or abuse the service</li>
+                                <li>Not use automated tools to access the service excessively</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Disclaimer</h3>
+                            <p><strong>Discord Manager is provided "as is" without warranties of any kind.</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>We are not affiliated with Discord Inc.</li>
+                                <li>We don't guarantee 100% uptime or availability</li>
+                                <li>Server growth data is approximate and based on available information</li>
+                                <li>Activity data is simulated for demonstration purposes</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Limitation of Liability</h3>
+                            <p>We are not responsible for:</p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>Loss of data stored in your browser</li>
+                                <li>Any actions you take based on the information provided</li>
+                                <li>Issues arising from Discord API changes</li>
+                                <li>Any damages resulting from use of the service</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Changes to Service</h3>
+                            <p>We reserve the right to:</p>
+                            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+                                <li>Modify or discontinue the service at any time</li>
+                                <li>Update these terms with notice</li>
+                                <li>Change features or functionality</li>
+                            </ul>
+                            
+                            <h3 style="color: var(--accent-primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Contact</h3>
+                            <p>Questions about these terms? Contact <a href="https://x.com/ObiWanBENobiETH" target="_blank" style="color: var(--accent-secondary);">@ObiWanBENobiETH on Twitter/X</a></p>
+                        </div>
+                        <button class="modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
         function showCategoryModal(serverId, serverName) {
             const server = state.servers.find(s => s.id === serverId);
             const currentCategories = state.serverCategories[serverId] || [];
@@ -1792,21 +1923,77 @@
                 app.innerHTML = `
                     <div class="container">
                         <div class="header">
+                            <div style="margin-bottom: 2rem;">
+                                <div style="width: 120px; height: 120px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 4rem; box-shadow: 0 10px 40px var(--shadow);">
+                                    📊
+                                </div>
+                            </div>
                             <h1>Discord Manager</h1>
                             <p class="subtitle">Complete Discord Server Management Suite</p>
                         </div>
+                        
                         ${state.error ? `<div class="error">Error: ${state.error}</div>` : ''}
+                        
                         <div class="info-box">
-                            <p><strong>🚀 Complete Feature Set:</strong></p>
-                            <p>• Analyze and categorize all your Discord servers</p>
-                            <p>• Track server growth over time with automatic snapshots</p>
-                            <p>• Find duplicate servers and permission risks</p>
-                            <p>• Export your data to CSV or JSON</p>
-                            <p>• Bulk actions and advanced filtering</p>
-                            <p>• View detailed insights about your Discord presence</p>
+                            <h2 style="color: var(--accent-primary); margin-bottom: 1rem; font-size: 1.5rem;">What is Discord Manager?</h2>
+                            <p>Discord Manager is a free, privacy-focused web application that helps you organize and manage your Discord servers efficiently. No installation required - just login with Discord OAuth and start organizing!</p>
                         </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 3rem 0;">
+                            <div class="insight-section">
+                                <h3>🚀 Features</h3>
+                                <div style="color: var(--text-secondary);">
+                                    <p>• <strong>Smart Organization:</strong> Categorize servers with custom tags</p>
+                                    <p>• <strong>Growth Tracking:</strong> Monitor member count changes over time</p>
+                                    <p>• <strong>Security Audit:</strong> Find servers with elevated permissions</p>
+                                    <p>• <strong>Bulk Actions:</strong> Manage multiple servers at once</p>
+                                    <p>• <strong>Export Data:</strong> Download your server list as CSV/JSON</p>
+                                    <p>• <strong>Duplicate Detection:</strong> Find servers you're in multiple times</p>
+                                </div>
+                            </div>
+
+                            <div class="insight-section">
+                                <h3>🔐 Privacy & Security</h3>
+                                <div style="color: var(--text-secondary);">
+                                    <p>• <strong>No Data Storage:</strong> We don't store your Discord data on our servers</p>
+                                    <p>• <strong>Local Storage Only:</strong> Your categories and preferences stay in your browser</p>
+                                    <p>• <strong>OAuth Authentication:</strong> Secure Discord login - we never see your password</p>
+                                    <p>• <strong>Open Source:</strong> Transparent code you can review</p>
+                                    <p>• <strong>No Tracking:</strong> We don't use analytics or tracking cookies</p>
+                                    <p>• <strong>Read-Only Access:</strong> We can't modify your servers or send messages</p>
+                                </div>
+                            </div>
+
+                            <div class="insight-section">
+                                <h3>❓ How It Works</h3>
+                                <div style="color: var(--text-secondary);">
+                                    <p><strong>1. Login:</strong> Click "Login with Discord" below</p>
+                                    <p><strong>2. Authorize:</strong> Grant permission to view your servers (read-only)</p>
+                                    <p><strong>3. Organize:</strong> Categorize, filter, and manage your servers</p>
+                                    <p><strong>4. Export:</strong> Download your organized server list anytime</p>
+                                    <p><strong>5. Track:</strong> Watch server growth over time with automatic snapshots</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-box" style="margin-top: 2rem;">
+                            <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">⚠️ Important Note</h3>
+                            <p><strong>This is NOT a phishing site!</strong> Discord Manager uses official Discord OAuth for authentication. We never ask for your password and cannot access your account credentials.</p>
+                            <p style="margin-top: 1rem;">If your antivirus flagged this site, it's a false positive because we're a new domain. You can safely whitelist discordmanage.com or <a href="https://www.avg.com/en-us/false-positive-file-form" target="_blank" style="color: var(--accent-secondary);">report the false positive to your antivirus</a>.</p>
+                        </div>
+
                         <div class="login-section">
                             <button class="login-btn" onclick="handleDiscordLogin()">Login with Discord</button>
+                            <p style="color: var(--text-secondary); margin-top: 1rem; font-size: 0.9rem;">
+                                By logging in, you agree to our <a href="#" onclick="showPrivacyPolicy(); return false;" style="color: var(--accent-primary);">Privacy Policy</a> and <a href="#" onclick="showTerms(); return false;" style="color: var(--accent-primary);">Terms of Service</a>
+                            </p>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border);">
+                            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Created by <a href="https://x.com/ObiWanBENobiETH" target="_blank" style="color: var(--accent-primary);">@ObiWanBENobiETH</a></p>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+                                Questions or issues? Contact me on <a href="https://x.com/ObiWanBENobiETH" target="_blank" style="color: var(--accent-secondary);">Twitter/X</a>
+                            </p>
                         </div>
                     </div>
                 `;
