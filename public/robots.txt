@@ -1,0 +1,6 @@
+# Discord Manager - robots.txt
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://www.discordmanage.com/sitemap.xml
