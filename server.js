@@ -33,8 +33,11 @@ app.get('/callback', async (req, res) => {
     const { code } = req.query;
 
     if (!code) {
+        console.error('No code provided in callback');
         return res.redirect('/?error=no_code');
     }
+
+    console.log('OAuth callback received, exchanging code for token...');
 
     try {
         // Exchange code for access token
@@ -54,12 +57,17 @@ app.get('/callback', async (req, res) => {
             }
         );
 
-        const { access_token } = tokenResponse.data;
+        const { access_token, scope } = tokenResponse.data;
+        console.log('OAuth success! Token received.');
+        console.log('Granted scopes:', scope);
 
         // Redirect back to app with token
         res.redirect(`/?token=${access_token}`);
     } catch (error) {
-        console.error('OAuth error:', error.response?.data || error.message);
+        console.error('==================== OAUTH ERROR ====================');
+        console.error('Status:', error.response?.status);
+        console.error('Discord Error:', JSON.stringify(error.response?.data, null, 2));
+        console.error('=====================================================');
         res.redirect('/?error=auth_failed');
     }
 });
@@ -103,14 +111,30 @@ app.get('/api/guilds', async (req, res) => {
     console.log('Fetching guilds for token:', token.substring(0, 10) + '...');
 
     try {
-        const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds?with_counts=true', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        console.log(`Successfully fetched ${guildsResponse.data.length} guilds`);
-        const guilds = guildsResponse.data;
+        // First, let's verify the token and check scopes
+        console.log('Attempting to fetch guilds from Discord API...');
+        
+        // Try with with_counts first
+        let guilds;
+        try {
+            const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds?with_counts=true', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            guilds = guildsResponse.data;
+            console.log(`Successfully fetched ${guilds.length} guilds WITH counts`);
+        } catch (countsError) {
+            console.warn('Failed to fetch with counts, trying without...', countsError.response?.status);
+            // Fallback: fetch without counts if with_counts causes issues
+            const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            guilds = guildsResponse.data;
+            console.log(`Successfully fetched ${guilds.length} guilds WITHOUT counts`);
+        }
 
         // Transform guild data
         const serverData = guilds.map(guild => ({
@@ -126,14 +150,20 @@ app.get('/api/guilds', async (req, res) => {
 
         res.json(serverData);
     } catch (error) {
-        console.error('Guild fetch error details:');
+        console.error('==================== GUILD FETCH ERROR ====================');
         console.error('Status:', error.response?.status);
-        console.error('Data:', error.response?.data);
-        console.error('Message:', error.message);
+        console.error('Status Text:', error.response?.statusText);
+        console.error('Discord Error:', JSON.stringify(error.response?.data, null, 2));
+        console.error('Error Message:', error.message);
+        console.error('==========================================================');
         
+        // Send detailed error back to frontend
+        const discordError = error.response?.data;
         res.status(error.response?.status || 500).json({ 
             error: 'Failed to fetch guilds',
-            details: error.response?.data?.message || error.message
+            details: discordError?.message || error.message,
+            code: discordError?.code,
+            discordError: discordError
         });
     }
 });
