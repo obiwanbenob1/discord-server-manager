@@ -897,15 +897,31 @@
             
             // Size-based
             if (server.owner) categories.push('owned');
-            if (server.memberCount > 1000) categories.push('large');
+            if (server.memberCount > 5000) categories.push('large'); // Raised from 1000 to 5000
             if (server.memberCount < 50) categories.push('personal');
             
-            // Name-based heuristics
+            // Name-based heuristics - Expanded gaming keywords
             const nameLower = server.name.toLowerCase();
-            if (nameLower.match(/game|gaming|clan|guild|esport/)) categories.push('gaming');
-            if (nameLower.match(/work|team|company|corp|business/)) categories.push('work');
-            if (nameLower.match(/study|learn|school|university|education/)) categories.push('education');
-            if (nameLower.match(/art|creative|design|music/)) categories.push('creative');
+            
+            // Gaming - Much more comprehensive
+            if (nameLower.match(/game|gaming|clan|guild|esport|e-sport|fps|mmo|rpg|pvp|pve|league|valorant|apex|fortnite|cod|warzone|minecraft|roblox|steam|xbox|playstation|nintendo|switch|gamer|play|arena|tournament|competitive|casual|ranked|gg|twitch|streamer|discord|lfg|squad|team|destiny|wow|ff14|final fantasy|overwatch|csgo|counter strike|dota|lol|pubg|rust|ark|tarkov|warframe|gta|rocket league|smash|pokemon|zelda|mario|sonic|halo|battlefield|apex legends/)) {
+                categories.push('gaming');
+            }
+            
+            // Work/Professional
+            if (nameLower.match(/work|team|company|corp|business|office|enterprise|professional|inc\.|llc|studio|agency|consulting|solutions/)) {
+                categories.push('work');
+            }
+            
+            // Education
+            if (nameLower.match(/study|learn|school|university|college|education|academy|class|course|tutor|student|homework/)) {
+                categories.push('education');
+            }
+            
+            // Creative/Art
+            if (nameLower.match(/art|creative|design|music|draw|paint|artist|creator|portfolio|graphic|illustration|animation/)) {
+                categories.push('creative');
+            }
             
             return categories.length > 0 ? categories : ['other'];
         }
@@ -1089,7 +1105,7 @@
                 total: state.servers.length,
                 owned: state.servers.filter(s => s.owner).length,
                 selected: state.selectedServers.size,
-                large: state.servers.filter(s => s.memberCount > 1000).length,
+                large: state.servers.filter(s => s.memberCount > 5000).length,
                 small: state.servers.filter(s => s.memberCount < 100).length
             };
         }
@@ -1238,7 +1254,7 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.large}</div>
-                        <div class="stat-label">Large (1000+)</div>
+                        <div class="stat-label">Large (5000+)</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">${stats.small}</div>
@@ -1462,7 +1478,7 @@
 
         function renderInsightsTab() {
             const ownedServers = state.servers.filter(s => s.owner);
-            const largeServers = state.servers.filter(s => s.memberCount > 1000).sort((a, b) => b.memberCount - a.memberCount);
+            const largeServers = state.servers.filter(s => s.memberCount > 5000).sort((a, b) => b.memberCount - a.memberCount);
             const smallServers = state.servers.filter(s => s.memberCount < 50);
             const totalMembers = state.servers.reduce((sum, s) => sum + s.memberCount, 0);
             const avgMembers = Math.round(totalMembers / state.servers.length);
