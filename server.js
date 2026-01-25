@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 
 // Get Discord OAuth URL
 app.get('/api/auth/url', (req, res) => {
-    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20guilds.join`;
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20guilds.join%20dm_channels.read%20connections`;
     res.json({ url: authUrl });
 });
 
@@ -131,6 +131,125 @@ app.get('/api/guilds', async (req, res) => {
         console.error('Guild fetch error:', error.response?.data || error.message);
         res.status(error.response?.status || 500).json({ 
             error: 'Failed to fetch guilds' 
+        });
+    }
+});
+
+// Get user's friends/relationships
+app.get('/api/relationships', async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+
+    try {
+        const relationshipsResponse = await axios.get('https://discord.com/api/users/@me/relationships', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const relationships = relationshipsResponse.data;
+
+        // Transform relationship data
+        const friendData = relationships
+            .filter(rel => rel.type === 1) // Type 1 = Friend
+            .map(rel => ({
+                id: rel.id,
+                username: rel.user.username,
+                discriminator: rel.user.discriminator,
+                avatar: rel.user.avatar 
+                    ? `https://cdn.discordapp.com/avatars/${rel.user.id}/${rel.user.avatar}.png?size=128`
+                    : null,
+                // Note: Discord OAuth doesn't provide DM history or last message times
+                // These would be simulated for demonstration
+                lastDmDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000),
+                messagesLast30Days: Math.floor(Math.random() * 100),
+            }));
+
+        res.json(friendData);
+    } catch (error) {
+        console.error('Relationships fetch error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch relationships',
+            details: error.response?.data
+        });
+    }
+});
+
+// Get user's DM channels
+app.get('/api/dm-channels', async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+
+    try {
+        const channelsResponse = await axios.get('https://discord.com/api/users/@me/channels', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const channels = channelsResponse.data;
+
+        // Filter and transform DM channels
+        const dmData = channels
+            .filter(channel => channel.type === 1 || channel.type === 3) // Type 1 = DM, Type 3 = Group DM
+            .map(channel => ({
+                id: channel.id,
+                type: channel.type,
+                recipients: channel.recipients || [],
+                lastMessageId: channel.last_message_id,
+                // Calculate approximate last message date from snowflake ID
+                lastMessageDate: channel.last_message_id 
+                    ? new Date((parseInt(channel.last_message_id) / 4194304) + 1420070400000)
+                    : null,
+                name: channel.name || (channel.recipients && channel.recipients.length > 0 
+                    ? channel.recipients.map(r => r.username).join(', ')
+                    : 'Unknown'),
+                icon: channel.icon,
+            }));
+
+        res.json(dmData);
+    } catch (error) {
+        console.error('DM channels fetch error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch DM channels',
+            details: error.response?.data
+        });
+    }
+});
+
+// Get user connections (linked accounts)
+app.get('/api/connections', async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+
+    try {
+        const connectionsResponse = await axios.get('https://discord.com/api/users/@me/connections', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        res.json(connectionsResponse.data);
+    } catch (error) {
+        console.error('Connections fetch error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch connections',
+            details: error.response?.data
         });
     }
 });
