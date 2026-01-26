@@ -1805,6 +1805,99 @@
             input.click();
         }
 
+        // ===== PHASE 3: SETTINGS MODAL =====
+        function showSettingsModal() {
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
+                        <h2>⚙️ Settings</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Customize your Discord Manager experience
+                        </p>
+
+                        <!-- Theme Switcher -->
+                        <div style="margin-bottom: 2rem;">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">🎨 Theme</h3>
+                            <div style="display: flex; gap: 0.75rem;">
+                                <button class="btn ${state.theme === 'dark' ? 'btn-primary' : ''}" onclick="setTheme('dark')" style="flex: 1;">
+                                    🌙 Dark Mode
+                                </button>
+                                <button class="btn ${state.theme === 'light' ? 'btn-primary' : ''}" onclick="setTheme('light')" style="flex: 1;">
+                                    ☀️ Light Mode
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Backup & Restore -->
+                        <div style="margin-bottom: 2rem;">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">💾 Backup & Restore</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                Export all your data (categories, notes, favorites, etc.) to a JSON file
+                            </p>
+                            <div style="display: flex; gap: 0.75rem;">
+                                <button class="btn btn-primary" onclick="exportAllData()" style="flex: 1;">
+                                    📥 Export Backup
+                                </button>
+                                <button class="btn" onclick="importBackup()" style="flex: 1;">
+                                    📤 Import Backup
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Presets -->
+                        <div style="margin-bottom: 2rem;">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">📑 Saved Presets</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                Save your current filters and selections for quick access later
+                            </p>
+                            
+                            <button class="btn btn-primary" onclick="saveCurrentPreset(); closeModal(); setTimeout(() => showSettingsModal(), 200);" style="width: 100%; margin-bottom: 1rem;">
+                                💾 Save Current State as Preset
+                            </button>
+
+                            ${state.savedPresets.length > 0 ? `
+                                <div style="max-height: 300px; overflow-y: auto;">
+                                    ${state.savedPresets.map((preset, i) => `
+                                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                                <div style="font-weight: bold;">${preset.name}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                                    ${new Date(preset.timestamp).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                            <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                                Filter: ${preset.categoryFilter} • Sort: ${preset.sortBy} • Selected: ${preset.selectedServers.length}
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem;">
+                                                <button class="btn btn-primary" onclick="loadPreset(${i}); closeModal();" style="flex: 1;">
+                                                    📂 Load
+                                                </button>
+                                                <button class="btn btn-danger" onclick="deletePreset(${i}); closeModal(); setTimeout(() => showSettingsModal(), 200);">
+                                                    🗑️ Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div class="info-box">
+                                    <p><strong>No presets saved yet</strong></p>
+                                    <p>Set up your filters and selections, then click "Save Current State"</p>
+                                </div>
+                            `}
+                        </div>
+
+                        <button class="modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                </div>
+            `;
+
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
         // ===== PHASE 1: QUICK LEAVE WORKFLOW =====
         function startQuickLeave() {
             const selectedArray = Array.from(state.selectedServers);
@@ -1927,6 +2020,23 @@
                                     Set Reminder
                                 </button>
                             `}
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent-primary);">🎮 Gaming Info</h3>
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                                ${state.gameDetections[serverId] ? `
+                                    <div style="margin-bottom: 0.75rem;">
+                                        <strong>Detected Game:</strong> ${state.gameDetections[serverId]}
+                                    </div>
+                                ` : '<div style="color: var(--text-secondary); margin-bottom: 0.75rem;">No game detected</div>'}
+                                <button class="btn ${state.lfgServers.has(serverId) ? 'btn-primary' : ''}" onclick="toggleLFG('${serverId}'); closeModal(); setTimeout(render, 100);" style="width: 100%;">
+                                    ${state.lfgServers.has(serverId) ? '✓ LFG Server (Click to remove)' : '👥 Mark as LFG Server'}
+                                </button>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">
+                                    LFG = Looking For Group. Mark servers you use to find teammates.
+                                </p>
+                            </div>
                         </div>
 
                         <div style="margin-bottom: 1.5rem;">
@@ -3447,6 +3557,7 @@
                                 <div class="user-name">${state.user.username}${state.user.discriminator !== '0' ? '#' + state.user.discriminator : ''}</div>
                                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Connected to Discord</div>
                             </div>
+                            <button class="btn" onclick="showSettingsModal()" style="margin-right: 0.5rem;">⚙️ Settings</button>
                             <button class="btn" onclick="handleLogout()">Logout</button>
                         </div>
 
