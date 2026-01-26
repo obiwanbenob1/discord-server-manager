@@ -488,6 +488,8 @@
 
         .user-details {
             flex: 1;
+            min-width: 0;
+            margin-right: 1rem;
         }
 
         .user-name {
@@ -1706,10 +1708,14 @@
             const preset = state.savedPresets[index];
             if (!preset) return;
 
+            // Clear everything first
+            state.selectedServers.clear();
             state.categoryFilter = preset.categoryFilter;
             state.sortBy = preset.sortBy;
             state.searchTerm = preset.searchTerm || '';
-            state.selectedServers = new Set(preset.selectedServers);
+            
+            // Load saved selections
+            preset.selectedServers.forEach(id => state.selectedServers.add(id));
             
             alert(`Loaded preset: ${preset.name}`);
             render();
