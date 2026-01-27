@@ -1339,8 +1339,31 @@
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
             if (isMobile) {
-                // Mobile: Open in new tab so URL is preserved
-                window.open(`https://discord.com/channels/${serverId}`, '_blank');
+                // Mobile: Try multiple approaches in sequence
+                // 1. Try deep link first
+                const deepLink = `discord://-/channels/${serverId}`;
+                const webLink = `https://discord.com/channels/${serverId}`;
+                
+                // Create hidden iframe to attempt deep link
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = deepLink;
+                document.body.appendChild(iframe);
+                
+                // Give the deep link a chance to work
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    
+                    // If still on page (deep link didn't work), open web in new tab
+                    // The web link will show "Open in Discord" banner with correct server
+                    if (!document.hidden) {
+                        const newWindow = window.open(webLink, '_blank');
+                        // For iOS: Focus new window to trigger app switch
+                        if (newWindow) {
+                            setTimeout(() => newWindow.focus(), 100);
+                        }
+                    }
+                }, 1000);
             } else {
                 // Desktop: Use deep link directly
                 window.open(`discord://discord.com/channels/${serverId}`, '_blank');
