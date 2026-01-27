@@ -1890,7 +1890,7 @@
                                                 Previous: ${growth.oldCount.toLocaleString()} → Current: ${growth.newCount.toLocaleString()}
                                             </div>
                                             <div style="display: flex; gap: 0.5rem;">
-                                                <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="text-decoration: none; padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                                <a href="discord://discord.com/channels/${server.id}" target="_blank" class="btn" style="text-decoration: none; padding: 0.4rem 0.8rem; font-size: 0.85rem;">
                                                     Open
                                                 </a>
                                             </div>
@@ -2043,7 +2043,7 @@
                                         <div style="font-weight: bold;">${s.name}</div>
                                         <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
                                     </div>
-                                    <a href="https://discord.com/channels/${s.id}" target="_blank" class="btn btn-primary" style="text-decoration: none;" onclick="recordVisit('${s.id}')">
+                                    <a href="discord://discord.com/channels/${s.id}" target="_blank" class="btn btn-primary" style="text-decoration: none;" onclick="recordVisit('${s.id}')">
                                         Open →
                                     </a>
                                 </div>
@@ -2678,14 +2678,14 @@
             }
             
             selectedArray.forEach(serverId => {
-                window.open(`https://discord.com/channels/${serverId}`, '_blank');
+                window.open(`discord://discord.com/channels/${serverId}`, '_blank');
             });
             
             showLeaveServerInstructions(selectedArray.length);
         }
 
         function openServerWithInstructions(serverId, serverName) {
-            window.open(`https://discord.com/channels/${serverId}`, '_blank');
+            window.open(`discord://discord.com/channels/${serverId}`, '_blank');
             showLeaveServerInstructions(1, serverName);
         }
 
@@ -2909,7 +2909,7 @@
                                     </div>
                                 </div>
                                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                                    <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;" onclick="recordVisit('${server.id}')">
+                                    <a href="discord://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;" onclick="recordVisit('${server.id}')">
                                         Open in Discord
                                     </a>
                                     ${!server.owner ? `
@@ -3247,7 +3247,7 @@
                                         <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
                                         <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
                                     </div>
-                                    <a href="https://discord.com/channels/${s.id}" target="_blank" class="btn" style="text-decoration: none;">
+                                    <a href="discord://discord.com/channels/${s.id}" target="_blank" class="btn" style="text-decoration: none;">
                                         Manage
                                     </a>
                                 </div>
