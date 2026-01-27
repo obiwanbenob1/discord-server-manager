@@ -1812,7 +1812,8 @@
         }
 
         // ===== GROWTH DETAILS MODAL =====
-        function showGrowthDetailsModal(type) {
+        window.showGrowthDetailsModal = function(type) {
+            console.log('showGrowthDetailsModal called with type:', type);
             let servers = [];
             let title = '';
             let emoji = '';
