@@ -238,6 +238,87 @@
             .stat-label {
                 font-size: 0.75rem;
             }
+            
+            /* Mobile: Stack controls vertically */
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .controls button,
+            .controls select {
+                width: 100%;
+            }
+            
+            /* Mobile: Stack stats vertically */
+            .stats-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Mobile: Single column insights */
+            .insight-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Mobile: Smaller modals */
+            .modal {
+                max-width: 95vw !important;
+                margin: 1rem;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            /* Mobile: Compact tabs */
+            .tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .tab {
+                font-size: 0.85rem;
+                padding: 0.6rem 1rem;
+            }
+            
+            /* Mobile: Compact server cards */
+            .item-card {
+                padding: 1rem;
+            }
+            
+            .item-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .item-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+            
+            /* Mobile: Stack buttons */
+            .user-info {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .user-info button {
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+            
+            /* Mobile: Smaller text */
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+            
+            h3 {
+                font-size: 1.2rem;
+            }
         }
 
         .controls {
@@ -2328,6 +2409,213 @@
             URL.revokeObjectURL(url);
         }
 
+        // ===== PHASE 5: PDF EXPORT =====
+        function exportToPDF() {
+            // Create a comprehensive HTML report
+            const stats = {
+                total: state.servers.length,
+                owned: state.servers.filter(s => s.owner).length,
+                favorites: state.favoriteServers.size,
+                withNotes: Object.keys(state.serverNotes).length,
+                lfg: state.lfgServers.size
+            };
+
+            const growingServers = state.servers.filter(s => {
+                const growth = getServerGrowth(s.id);
+                return growth && growth.change > 0;
+            }).length;
+
+            const shrinkingServers = state.servers.filter(s => {
+                const growth = getServerGrowth(s.id);
+                return growth && growth.change < 0;
+            }).length;
+
+            const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Discord Manager Report - ${state.user.username}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        h1 { color: #5865F2; border-bottom: 3px solid #5865F2; padding-bottom: 10px; }
+        h2 { color: #23272A; margin-top: 30px; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 30px 0; }
+        .stat-box { background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 32px; font-weight: bold; color: #5865F2; }
+        .stat-label { color: #666; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: #5865F2; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        tr:hover { background: #f9f9f9; }
+        .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>📊 Discord Manager Report</h1>
+    <p><strong>User:</strong> ${state.user.username}${state.user.discriminator !== '0' ? '#' + state.user.discriminator : ''}</p>
+    <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+
+    <h2>📈 Overview</h2>
+    <div class="stats">
+        <div class="stat-box">
+            <div class="stat-value">${stats.total}</div>
+            <div class="stat-label">Total Servers</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${stats.owned}</div>
+            <div class="stat-label">Servers Owned</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${stats.favorites}</div>
+            <div class="stat-label">Favorites</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${growingServers}</div>
+            <div class="stat-label">Growing</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${shrinkingServers}</div>
+            <div class="stat-label">Shrinking</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${stats.lfg}</div>
+            <div class="stat-label">LFG Servers</div>
+        </div>
+    </div>
+
+    <h2>🎮 Your Servers</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Server Name</th>
+                <th>Members</th>
+                <th>Growth</th>
+                <th>Health</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${state.servers.map(server => {
+                const growth = getServerGrowth(server.id);
+                const health = state.serverHealth[server.id] || { score: 0 };
+                const isFavorite = state.favoriteServers.has(server.id);
+                const isLFG = state.lfgServers.has(server.id);
+                const game = state.gameDetections[server.id];
+                
+                return `
+                    <tr>
+                        <td>
+                            ${server.name}
+                            ${isFavorite ? ' ⭐' : ''}
+                            ${game ? ` (${game})` : ''}
+                        </td>
+                        <td>${server.memberCount.toLocaleString()}</td>
+                        <td>${growth ? (growth.change > 0 ? '+' : '') + growth.change : 'N/A'}</td>
+                        <td>${health.score}/100</td>
+                        <td>${server.owner ? 'Owner' : isLFG ? 'LFG' : 'Member'}</td>
+                    </tr>
+                `;
+            }).join('')}
+        </tbody>
+    </table>
+
+    ${Object.keys(state.serverNotes).length > 0 ? `
+        <h2>📝 Server Notes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Server</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${Object.entries(state.serverNotes).map(([serverId, note]) => {
+                    const server = state.servers.find(s => s.id === serverId);
+                    return server ? `
+                        <tr>
+                            <td>${server.name}</td>
+                            <td>${note}</td>
+                        </tr>
+                    ` : '';
+                }).join('')}
+            </tbody>
+        </table>
+    ` : ''}
+
+    <div class="footer">
+        Generated by Discord Manager • ${window.location.origin}
+    </div>
+</body>
+</html>
+            `;
+
+            // Create blob and download
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `discord-report-${Date.now()}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert('📄 Report exported! Open the HTML file and print to PDF (Ctrl+P / Cmd+P)');
+        }
+
+        // ===== PHASE 5: CALENDAR SYNC (ICS FORMAT) =====
+        function exportRemindersToCalendar() {
+            const reminders = Object.entries(state.serverReminders);
+            
+            if (reminders.length === 0) {
+                alert('No reminders to export!');
+                return;
+            }
+
+            // Create ICS calendar file
+            let icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Discord Manager//Reminders//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Discord Server Reminders
+X-WR-TIMEZONE:UTC
+`;
+
+            reminders.forEach(([serverId, reminder]) => {
+                const server = state.servers.find(s => s.id === serverId);
+                if (!server) return;
+
+                const date = new Date(reminder.date);
+                const dateStr = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                const uid = `discord-${serverId}-${Date.now()}@discordmanager.com`;
+
+                icsContent += `
+BEGIN:VEVENT
+UID:${uid}
+DTSTAMP:${dateStr}
+DTSTART:${dateStr}
+SUMMARY:Discord: ${server.name}
+DESCRIPTION:${reminder.note || 'Server reminder'}
+LOCATION:discord://discord.com/channels/${serverId}
+STATUS:CONFIRMED
+END:VEVENT
+`;
+            });
+
+            icsContent += `END:VCALENDAR`;
+
+            // Download ICS file
+            const blob = new Blob([icsContent], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `discord-reminders-${Date.now()}.ics`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert(`📅 ${reminders.length} reminder(s) exported! Import the .ics file into Google Calendar, Outlook, or Apple Calendar.`);
+        }
+
         // ===== UTILITY FUNCTIONS =====
         function formatDate(date) {
             const now = Date.now();
@@ -3015,6 +3303,8 @@
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                             <button class="btn" onclick="exportToCSV()">📊 Export to CSV</button>
                             <button class="btn" onclick="exportToJSON()">📄 Export to JSON</button>
+                            <button class="btn btn-primary" onclick="exportToPDF()">📑 Export PDF Report</button>
+                            <button class="btn" onclick="exportRemindersToCalendar()">📅 Export Reminders</button>
                         </div>
                         <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
                             <p style="color: var(--text-secondary); font-size: 0.9rem;">
