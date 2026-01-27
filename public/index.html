@@ -1339,9 +1339,8 @@
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
             if (isMobile) {
-                // Mobile: Use regular HTTPS link
-                // Mobile browsers will show "Open in Discord" if app is installed
-                window.location.href = `https://discord.com/channels/${serverId}`;
+                // Mobile: Open in new tab so URL is preserved
+                window.open(`https://discord.com/channels/${serverId}`, '_blank');
             } else {
                 // Desktop: Use deep link directly
                 window.open(`discord://discord.com/channels/${serverId}`, '_blank');
