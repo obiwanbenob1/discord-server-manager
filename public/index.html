@@ -1811,6 +1811,102 @@
             input.click();
         }
 
+        // ===== GROWTH DETAILS MODAL =====
+        function showGrowthDetailsModal(type) {
+            let servers = [];
+            let title = '';
+            let emoji = '';
+            let color = '';
+            
+            if (type === 'growing') {
+                servers = state.servers.filter(s => {
+                    const growth = getServerGrowth(s.id);
+                    return growth && growth.change > 0;
+                }).sort((a, b) => {
+                    const growthA = getServerGrowth(a.id);
+                    const growthB = getServerGrowth(b.id);
+                    return growthB.change - growthA.change;
+                });
+                title = 'Growing Servers';
+                emoji = '📈';
+                color = 'var(--accent-primary)';
+            } else if (type === 'shrinking') {
+                servers = state.servers.filter(s => {
+                    const growth = getServerGrowth(s.id);
+                    return growth && growth.change < 0;
+                }).sort((a, b) => {
+                    const growthA = getServerGrowth(a.id);
+                    const growthB = getServerGrowth(b.id);
+                    return growthA.change - growthB.change;
+                });
+                title = 'Shrinking Servers';
+                emoji = '📉';
+                color = 'var(--accent-danger)';
+            } else if (type === 'stable') {
+                servers = state.servers.filter(s => {
+                    const growth = getServerGrowth(s.id);
+                    return growth && growth.change === 0;
+                }).sort((a, b) => b.memberCount - a.memberCount);
+                title = 'Stable Servers';
+                emoji = '➡️';
+                color = 'var(--text-secondary)';
+            }
+
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 800px;">
+                        <h2>${emoji} ${title}</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            ${servers.length} server${servers.length !== 1 ? 's' : ''} ${type === 'stable' ? 'with no change' : type}
+                        </p>
+
+                        <div style="max-height: 500px; overflow-y: auto;">
+                            ${servers.map(server => {
+                                const growth = getServerGrowth(server.id);
+                                return `
+                                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                            <div style="flex: 1;">
+                                                <div style="font-weight: bold; margin-bottom: 0.25rem;">${server.name}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                                    Current: ${server.memberCount.toLocaleString()} members
+                                                </div>
+                                            </div>
+                                            <div style="text-align: right; margin-left: 1rem;">
+                                                <div style="font-size: 1.5rem; font-weight: bold; color: ${color};">
+                                                    ${growth.change > 0 ? '+' : ''}${growth.change.toLocaleString()}
+                                                </div>
+                                                <div style="color: ${color}; font-size: 0.9rem; font-weight: bold;">
+                                                    ${growth.percentChange}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+                                            <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                                Previous: ${growth.oldCount.toLocaleString()} → Current: ${growth.newCount.toLocaleString()}
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem;">
+                                                <a href="https://discord.com/channels/${server.id}" target="_blank" class="btn" style="text-decoration: none; padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                                    Open
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <button class="modal-close" onclick="closeModal()" style="margin-top: 1.5rem;">Close</button>
+                    </div>
+                </div>
+            `;
+
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
         // ===== PHASE 3: SETTINGS MODAL =====
         function showSettingsModal() {
             const modalHtml = `
@@ -2556,12 +2652,6 @@
             render();
         }
 
-        function selectSmallServers() {
-            const small = state.servers.filter(s => s.memberCount < 100);
-            state.selectedServers = new Set(small.map(s => s.id));
-            render();
-        }
-
         function selectAll() {
             state.selectedServers = new Set(state.servers.map(s => s.id));
             render();
@@ -2729,7 +2819,6 @@
                     </select>
                     <button class="btn" onclick="selectAll()">Select All</button>
                     <button class="btn" onclick="deselectAll()">Deselect All</button>
-                    <button class="btn" onclick="selectSmallServers()">Select Small</button>
                     <button class="btn" onclick="showBulkCategoryModal()" ${stats.selected === 0 ? 'disabled' : ''}>
                         📁 Categorize ${stats.selected}
                     </button>
@@ -2920,7 +3009,6 @@
                             Perform actions on multiple servers at once
                         </p>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="selectSmallServers()">Select Small Servers</button>
                             <button class="btn" onclick="exportToCSV()">📊 Export to CSV</button>
                             <button class="btn" onclick="exportToJSON()">📄 Export to JSON</button>
                         </div>
@@ -2991,17 +3079,17 @@
                                 
                                 return `
                                     <div style="margin: 1.5rem 0;">
-                                        <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">📊 Growth Overview</h4>
+                                        <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">📊 Growth Overview (Click to view details)</h4>
                                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                                            <div style="background: rgba(0, 255, 136, 0.1); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 1rem; text-align: center;">
+                                            <div onclick="showGrowthDetailsModal('growing')" style="background: rgba(0, 255, 136, 0.1); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                                 <div style="font-size: 2rem; color: var(--accent-primary); font-weight: bold;">📈 ${growingServers}</div>
                                                 <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Growing</div>
                                             </div>
-                                            <div style="background: rgba(255, 51, 102, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px; padding: 1rem; text-align: center;">
+                                            <div onclick="showGrowthDetailsModal('shrinking')" style="background: rgba(255, 51, 102, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                                 <div style="font-size: 2rem; color: var(--accent-danger); font-weight: bold;">📉 ${shrinkingServers}</div>
                                                 <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Shrinking</div>
                                             </div>
-                                            <div style="background: rgba(139, 157, 195, 0.1); border: 1px solid var(--text-secondary); border-radius: 8px; padding: 1rem; text-align: center;">
+                                            <div onclick="showGrowthDetailsModal('stable')" style="background: rgba(139, 157, 195, 0.1); border: 1px solid var(--text-secondary); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                                 <div style="font-size: 2rem; color: var(--text-secondary); font-weight: bold;">➡️ ${stableServers}</div>
                                                 <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Stable</div>
                                             </div>
