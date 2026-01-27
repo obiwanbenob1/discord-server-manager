@@ -1339,20 +1339,17 @@
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
             if (isMobile) {
-                // Mobile: Use intent URL for Android, universal link for iOS
-                const isAndroid = /Android/i.test(navigator.userAgent);
-                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                // Mobile: Use Discord's mobile deep link format
+                // Format: discord://-/channels/SERVER_ID
+                window.location.href = `discord://-/channels/${serverId}`;
                 
-                if (isAndroid) {
-                    // Android: Use intent URL to force app open
-                    window.location.href = `intent://discord.com/channels/${serverId}#Intent;scheme=https;package=com.discord;end`;
-                } else if (isIOS) {
-                    // iOS: Use universal link (should open in app if installed)
-                    window.location.href = `https://discord.com/channels/${serverId}`;
-                } else {
-                    // Other mobile: Try deep link
-                    window.location.href = `discord://discord.com/channels/${serverId}`;
-                }
+                // Fallback to web after 2 seconds if app doesn't open
+                setTimeout(() => {
+                    // If page is still visible (app didn't open), try web
+                    if (!document.hidden) {
+                        window.location.href = `https://discord.com/channels/${serverId}`;
+                    }
+                }, 2000);
             } else {
                 // Desktop: Use deep link directly
                 window.open(`discord://discord.com/channels/${serverId}`, '_blank');
