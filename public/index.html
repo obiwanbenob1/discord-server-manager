@@ -3082,16 +3082,16 @@
                                         <h4 style="color: var(--accent-secondary); margin-bottom: 1rem;">📊 Growth Overview (Click to view details)</h4>
                                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                                             <div onclick="showGrowthDetailsModal('growing')" style="background: rgba(0, 255, 136, 0.1); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                                                <div style="font-size: 2rem; color: var(--accent-primary); font-weight: bold;">📈 ${growingServers}</div>
-                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Growing</div>
+                                                <div style="font-size: 2rem; color: var(--accent-primary); font-weight: bold; pointer-events: none;">📈 ${growingServers}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem; pointer-events: none;">Growing</div>
                                             </div>
                                             <div onclick="showGrowthDetailsModal('shrinking')" style="background: rgba(255, 51, 102, 0.1); border: 1px solid var(--accent-danger); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                                                <div style="font-size: 2rem; color: var(--accent-danger); font-weight: bold;">📉 ${shrinkingServers}</div>
-                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Shrinking</div>
+                                                <div style="font-size: 2rem; color: var(--accent-danger); font-weight: bold; pointer-events: none;">📉 ${shrinkingServers}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem; pointer-events: none;">Shrinking</div>
                                             </div>
                                             <div onclick="showGrowthDetailsModal('stable')" style="background: rgba(139, 157, 195, 0.1); border: 1px solid var(--text-secondary); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                                                <div style="font-size: 2rem; color: var(--text-secondary); font-weight: bold;">➡️ ${stableServers}</div>
-                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Stable</div>
+                                                <div style="font-size: 2rem; color: var(--text-secondary); font-weight: bold; pointer-events: none;">➡️ ${stableServers}</div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem; pointer-events: none;">Stable</div>
                                             </div>
                                         </div>
                                     </div>
