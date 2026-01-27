@@ -1332,6 +1332,31 @@
             return days;
         }
 
+        // ===== MOBILE-FRIENDLY DISCORD OPENER =====
+        function openDiscordServer(serverId) {
+            recordVisit(serverId);
+            
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Mobile: Try deep link with better fallback
+                const deepLink = `discord://discord.com/channels/${serverId}`;
+                const webLink = `https://discord.com/channels/${serverId}`;
+                
+                // Try to open in Discord app
+                window.location.href = deepLink;
+                
+                // Fallback to web after 1.5 seconds if app doesn't open
+                setTimeout(() => {
+                    if (document.hidden) return; // App opened, don't open web
+                    window.location.href = webLink;
+                }, 1500);
+            } else {
+                // Desktop: Use deep link directly
+                window.open(`discord://discord.com/channels/${serverId}`, '_blank');
+            }
+        }
+
         // ===== PHASE 1: SERVER HEALTH SCORING =====
         function calculateServerHealth(serverId) {
             const server = state.servers.find(s => s.id === serverId);
@@ -1971,9 +1996,9 @@
                                                 Previous: ${growth.oldCount.toLocaleString()} → Current: ${growth.newCount.toLocaleString()}
                                             </div>
                                             <div style="display: flex; gap: 0.5rem;">
-                                                <a href="discord://discord.com/channels/${server.id}" target="_blank" class="btn" style="text-decoration: none; padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                                <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="openDiscordServer('${server.id}')">
                                                     Open
-                                                </a>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -2124,9 +2149,9 @@
                                         <div style="font-weight: bold;">${s.name}</div>
                                         <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
                                     </div>
-                                    <a href="discord://discord.com/channels/${s.id}" target="_blank" class="btn btn-primary" style="text-decoration: none;" onclick="recordVisit('${s.id}')">
+                                    <button class="btn btn-primary" onclick="openDiscordServer('${s.id}')">
                                         Open →
-                                    </a>
+                                    </button>
                                 </div>
                             `).join('')}
                         </div>
@@ -3197,9 +3222,9 @@ END:VEVENT
                                     </div>
                                 </div>
                                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                                    <a href="discord://discord.com/channels/${server.id}" target="_blank" class="btn" style="flex: 1; text-decoration: none; text-align: center;" onclick="recordVisit('${server.id}')">
+                                    <button class="btn" style="flex: 1;" onclick="openDiscordServer('${server.id}')">
                                         Open in Discord
-                                    </a>
+                                    </button>
                                     ${!server.owner ? `
                                         <button class="btn btn-danger" onclick="openServerWithInstructions('${server.id}', '${server.name.replace(/'/g, "\\'")}')">
                                             Leave Server
@@ -3537,9 +3562,9 @@ END:VEVENT
                                         <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
                                         <div style="color: var(--text-secondary); font-size: 0.9rem;">${s.memberCount.toLocaleString()} members</div>
                                     </div>
-                                    <a href="discord://discord.com/channels/${s.id}" target="_blank" class="btn" style="text-decoration: none;">
+                                    <button class="btn" onclick="openDiscordServer('${s.id}')">
                                         Manage
-                                    </a>
+                                    </button>
                                 </div>
                             `).join('')}
                         </div>
