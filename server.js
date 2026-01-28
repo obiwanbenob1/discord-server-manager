@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 
 // Get Discord OAuth URL
 app.get('/api/auth/url', (req, res) => {
-    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections`;
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections%20guilds.members.read`;
     res.json({ url: authUrl });
 });
 
@@ -287,20 +287,24 @@ app.get('/api/guilds/:guildId/events', async (req, res) => {
     const { guildId } = req.params;
 
     try {
+        console.log(`Fetching events for guild ${guildId}...`);
         const eventsResponse = await axios.get(`https://discord.com/api/guilds/${guildId}/scheduled-events`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         });
 
+        console.log(`Found ${eventsResponse.data.length} events for guild ${guildId}`);
         res.json(eventsResponse.data);
     } catch (error) {
+        console.error(`Events fetch error for guild ${guildId}:`, error.response?.status, error.response?.data);
+        
         // If error is 403 or 404, return empty array (guild may not have events or permission issues)
-        if (error.response?.status === 403 || error.response?.status === 404) {
+        if (error.response?.status === 403 || error.response?.status === 404 || error.response?.status === 401) {
+            console.log(`Returning empty array for guild ${guildId} due to ${error.response?.status}`);
             return res.json([]);
         }
         
-        console.error('Events fetch error:', error.response?.data || error.message);
         res.status(error.response?.status || 500).json({ 
             error: 'Failed to fetch events',
             details: error.response?.data
