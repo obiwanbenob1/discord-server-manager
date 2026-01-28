@@ -1332,20 +1332,18 @@
             return days;
         }
 
-        // ===== MOBILE-FRIENDLY DISCORD OPENER =====
+        // ===== DISCORD OPENER =====
+        // Note: Mobile deep linking to specific Discord servers is not reliable
+        // This is a Discord app limitation. Desktop works perfectly.
         function openDiscordServer(serverId) {
             recordVisit(serverId);
             
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const url = isMobile 
+                ? `https://discord.com/channels/${serverId}`
+                : `discord://discord.com/channels/${serverId}`;
             
-            if (isMobile) {
-                // Mobile: Open web link - user will see "Open in Discord" banner
-                // This is the standard mobile app-linking UX (same as Twitter, Reddit, etc.)
-                window.open(`https://discord.com/channels/${serverId}`, '_blank');
-            } else {
-                // Desktop: Use deep link directly - works perfectly
-                window.open(`discord://discord.com/channels/${serverId}`, '_blank');
-            }
+            window.open(url, '_blank');
         }
 
         // ===== PHASE 1: SERVER HEALTH SCORING =====
@@ -3784,6 +3782,264 @@ END:VEVENT
             `;
         }
 
+        function renderServerSetupTab() {
+            return `
+                <div class="insight-grid">
+                    <div class="insight-section">
+                        <h3>🏗️ Setting Up Your Discord Server Safely</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Complete guide to creating a secure Discord server using a cold account
+                        </p>
+
+                        <div class="warning-box" style="margin-bottom: 2rem;">
+                            <strong>⚠️ Critical Security Practice:</strong>
+                            <p style="margin-top: 0.5rem;">Always create and manage important Discord servers from a "cold" account - a separate Discord account used ONLY for server ownership, never for regular chatting.</p>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">📋 Step 1: Create a Cold Account</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <ol style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Use a new email:</strong> Create a brand new email address specifically for this Discord account</li>
+                                <li><strong>Strong unique password:</strong> Use a password manager to generate a unique 20+ character password</li>
+                                <li><strong>Enable 2FA immediately:</strong> Use an authenticator app (Authy, Google Authenticator) - NOT SMS</li>
+                                <li><strong>Save backup codes:</strong> Store your 2FA backup codes in a secure location (password manager or physical safe)</li>
+                                <li><strong>Never use this account for chatting:</strong> This account should ONLY own servers, never participate in other servers</li>
+                            </ol>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🔐 Step 2: Secure the Account</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">Enable All Security Features:</h5>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Two-Factor Authentication (2FA):</strong> User Settings → My Account → Enable Two-Factor Auth</li>
+                                <li><strong>Require 2FA for moderator actions:</strong> Server Settings → Moderation → Require 2FA</li>
+                                <li><strong>Phone verification:</strong> Add a phone number (can remove after verification if needed)</li>
+                                <li><strong>Email verification:</strong> Verify the email address immediately</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🏗️ Step 3: Create Your Server</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <ol style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Create server:</strong> Click "+" → "Create My Own" → Choose template or start from scratch</li>
+                                <li><strong>Name carefully:</strong> Choose a clear, professional name (you can change later)</li>
+                                <li><strong>Set server icon:</strong> Upload a proper icon immediately to look legitimate</li>
+                                <li><strong>Configure verification level:</strong> Server Settings → Moderation → Verification Level = High</li>
+                            </ol>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">👥 Step 4: Set Up Your Main Account as Admin</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <ol style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Create invite link:</strong> Server Settings → Invites → Create Invite</li>
+                                <li><strong>Join with your main account:</strong> Use the invite on your regular Discord account</li>
+                                <li><strong>Create Admin role:</strong> Server Settings → Roles → Create Role → Name it "Admin"</li>
+                                <li><strong>Grant Administrator permission:</strong> Check "Administrator" box (or specific permissions)</li>
+                                <li><strong>Assign to your main account:</strong> Right-click your name → Roles → Admin</li>
+                            </ol>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🛡️ Step 5: Configure Server Security</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">Critical Security Settings:</h5>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Verification Level → High:</strong> Server Settings → Moderation → Verification Level</li>
+                                <li><strong>Explicit content filter → Scan all:</strong> Server Settings → Moderation → Explicit Content Filter</li>
+                                <li><strong>Default permissions → Minimal:</strong> Server Settings → Roles → @everyone → Remove unnecessary permissions</li>
+                                <li><strong>Enable community features:</strong> Server Settings → Enable Community (for moderation tools)</li>
+                                <li><strong>Set up AutoMod:</strong> Server Settings → AutoMod → Enable all rules</li>
+                                <li><strong>Create mod log channel:</strong> Make a private channel for moderation logs</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">⚠️ Why Use a Cold Account?</h4>
+                        <div style="background: rgba(255, 51, 102, 0.1); border: 1px solid var(--accent-danger); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5 style="color: var(--accent-danger); margin-bottom: 1rem;">Protection from Account Compromise:</h5>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8; color: var(--text-primary);">
+                                <li><strong>Phishing attacks:</strong> If your main account gets phished, your server is safe</li>
+                                <li><strong>Token theft:</strong> Malware stealing your token can't access the server owner account</li>
+                                <li><strong>Social engineering:</strong> Someone tricking you can't access server ownership</li>
+                                <li><strong>Compromised bot:</strong> A malicious bot can't steal your server</li>
+                                <li><strong>Account ban:</strong> If your main account gets banned, you don't lose the server</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">✅ Best Practices Checklist</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+                            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li>☑️ Cold account with unique email and password</li>
+                                <li>☑️ 2FA enabled with backup codes saved</li>
+                                <li>☑️ Never use cold account for regular chatting</li>
+                                <li>☑️ Main account has Admin role (not Owner)</li>
+                                <li>☑️ Verification Level set to High</li>
+                                <li>☑️ @everyone role has minimal permissions</li>
+                                <li>☑️ AutoMod rules enabled</li>
+                                <li>☑️ Mod log channel created</li>
+                                <li>☑️ Regular security audits scheduled</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBotGuideTab() {
+            return `
+                <div class="insight-grid">
+                    <div class="insight-section">
+                        <h3>🤖 Discord Bots: Complete Safety Guide</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            How to add, configure, and secure bots without compromising your server
+                        </p>
+
+                        <div class="warning-box" style="margin-bottom: 2rem;">
+                            <strong>⚠️ Critical Warning:</strong>
+                            <p style="margin-top: 0.5rem;">Bots with Administrator permission can do ANYTHING in your server - delete channels, ban members, change settings, etc. Never give a bot more permissions than it needs!</p>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🔍 Step 1: Research the Bot</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">Before Adding ANY Bot:</h5>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Check bot age:</strong> Look for bots that have been around 6+ months</li>
+                                <li><strong>Read reviews:</strong> Search "[bot name] review" or "[bot name] scam"</li>
+                                <li><strong>Check server count:</strong> Bots in 100k+ servers are generally safer</li>
+                                <li><strong>Read documentation:</strong> Professional bots have clear docs</li>
+                                <li><strong>Check developer:</strong> Look up the developer's reputation</li>
+                                <li><strong>Verify official links:</strong> Only add from official bot lists (top.gg, discord.bots.gg) or bot's official website</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">➕ Step 2: Adding a Bot Safely</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <ol style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Click official invite link:</strong> From bot's official site or trusted bot list</li>
+                                <li><strong>Review permissions carefully:</strong> Discord shows what permissions the bot requests</li>
+                                <li><strong>Uncheck Administrator:</strong> ALWAYS uncheck "Administrator" - grant specific permissions instead</li>
+                                <li><strong>Select your server:</strong> Choose which server to add it to</li>
+                                <li><strong>Confirm:</strong> Click "Authorize"</li>
+                                <li><strong>Complete captcha:</strong> Verify you're human</li>
+                            </ol>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🔐 Step 3: Configure Permissions Properly</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">Principle of Least Privilege:</h5>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Only give the bot permissions it actually needs to function.</p>
+                            
+                            <h5 style="color: var(--text-primary); margin: 1.5rem 0 1rem;">Common Bot Types & Safe Permissions:</h5>
+                            
+                            <div style="margin-bottom: 1.5rem;">
+                                <strong style="color: var(--accent-primary);">Moderation Bots (MEE6, Dyno, Carl-bot):</strong>
+                                <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 1.6; color: var(--text-secondary);">
+                                    <li>✅ Manage Messages</li>
+                                    <li>✅ Kick Members</li>
+                                    <li>✅ Ban Members</li>
+                                    <li>✅ Manage Roles (if needed for auto-roles)</li>
+                                    <li>❌ Administrator</li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-bottom: 1.5rem;">
+                                <strong style="color: var(--accent-primary);">Music Bots (Groovy, Rythm, Hydra):</strong>
+                                <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 1.6; color: var(--text-secondary);">
+                                    <li>✅ Connect</li>
+                                    <li>✅ Speak</li>
+                                    <li>✅ Use Voice Activity</li>
+                                    <li>❌ Administrator</li>
+                                    <li>❌ Manage Server</li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-bottom: 1.5rem;">
+                                <strong style="color: var(--accent-primary);">Utility Bots (Tatsumaki, YAGPDB, Pokétwo):</strong>
+                                <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 1.6; color: var(--text-secondary);">
+                                    <li>✅ Send Messages</li>
+                                    <li>✅ Embed Links</li>
+                                    <li>✅ Attach Files</li>
+                                    <li>✅ Read Message History</li>
+                                    <li>❌ Administrator</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🚨 Red Flags - Dangerous Permissions</h4>
+                        <div style="background: rgba(255, 51, 102, 0.1); border: 1px solid var(--accent-danger); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5 style="color: var(--accent-danger); margin-bottom: 1rem;">NEVER Grant These Unless Absolutely Necessary:</h5>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8; color: var(--text-primary);">
+                                <li><strong>❌ Administrator:</strong> Complete control over everything - NEVER give this</li>
+                                <li><strong>⚠️ Manage Server:</strong> Can change server name, icon, region - rarely needed</li>
+                                <li><strong>⚠️ Manage Roles:</strong> Can create roles above bot's role - use with caution</li>
+                                <li><strong>⚠️ Manage Channels:</strong> Can delete/create channels - only if bot manages channels</li>
+                                <li><strong>⚠️ Manage Webhooks:</strong> Can create external integrations - rarely needed</li>
+                                <li><strong>⚠️ Mention @everyone:</strong> Can ping everyone - spam risk</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🔧 Step 4: Set Up Role Hierarchy</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Roles higher in the list have more power. Proper hierarchy prevents bots from affecting moderators.</p>
+                            <div style="background: var(--bg-primary); padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                                <strong style="color: var(--accent-primary);">Correct Role Order (top to bottom):</strong>
+                                <ol style="margin: 0.5rem 0 0 1.5rem; line-height: 1.8;">
+                                    <li>Owner (your role)</li>
+                                    <li>Admin</li>
+                                    <li>Moderator</li>
+                                    <li>Bot Roles (all bot roles here)</li>
+                                    <li>Member roles</li>
+                                    <li>@everyone</li>
+                                </ol>
+                            </div>
+                            <p style="color: var(--accent-warning); margin-top: 1rem;">💡 This ensures bots can't kick/ban/manage mods or admins!</p>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🛡️ Step 5: Configure Bot Settings</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li><strong>Limit bot channels:</strong> Use channel permissions to restrict where bot can post</li>
+                                <li><strong>Set up bot commands channel:</strong> Create a dedicated #bot-commands channel</li>
+                                <li><strong>Configure bot dashboard:</strong> Use bot's web dashboard to set features</li>
+                                <li><strong>Set mod-only commands:</strong> Restrict dangerous commands to mod roles only</li>
+                                <li><strong>Enable logging:</strong> Make bot log actions to a private mod channel</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">🚨 Signs of a Malicious Bot</h4>
+                        <div style="background: rgba(255, 51, 102, 0.1); border: 1px solid var(--accent-danger); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5 style="color: var(--accent-danger); margin-bottom: 1rem;">Remove Immediately If:</h5>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8; color: var(--text-primary);">
+                                <li>🚫 Bot sends DMs asking for passwords or tokens</li>
+                                <li>🚫 Bot creates invite links without permission</li>
+                                <li>🚫 Bot deletes channels or bans members unexpectedly</li>
+                                <li>🚫 Bot creates @everyone spam</li>
+                                <li>🚫 Bot posts NSFW content in non-NSFW channels</li>
+                                <li>🚫 Bot creates new roles with admin permissions</li>
+                                <li>🚫 Developer asks you to run code or install files</li>
+                            </ul>
+                        </div>
+
+                        <h4 style="color: var(--accent-primary); margin: 2rem 0 1rem;">✅ Regular Bot Maintenance</h4>
+                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">Monthly Checklist:</h5>
+                            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                                <li>☑️ Audit bot permissions - remove any you don't need</li>
+                                <li>☑️ Check bot activity - remove inactive bots</li>
+                                <li>☑️ Review role hierarchy - ensure bots are below mods</li>
+                                <li>☑️ Check for bot updates - read changelog for changes</li>
+                                <li>☑️ Test critical bot functions - make sure they work</li>
+                                <li>☑️ Remove duplicate bots - don't need 3 music bots</li>
+                            </ul>
+                        </div>
+
+                        <div class="info-box" style="margin-top: 2rem;">
+                            <strong>💡 Pro Tip:</strong>
+                            <p style="margin-top: 0.5rem;">Keep a spreadsheet of all bots in your server, what they do, and why you added them. Makes it easy to audit and remove unnecessary bots later!</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function render() {
             const app = document.getElementById('app');
             
@@ -3849,51 +4105,112 @@ END:VEVENT
                         ${state.error ? `<div class="error">Error: ${state.error}</div>` : ''}
                         
                         <div class="info-box">
-                            <h2 style="color: var(--accent-primary); margin-bottom: 1rem; font-size: 1.5rem;">What is Discord Manager?</h2>
-                            <p>Discord Manager is a free, privacy-focused web application that helps you organize and manage your Discord servers efficiently. No installation required - just login with Discord OAuth and start organizing!</p>
+                            <h2 style="color: var(--accent-primary); margin-bottom: 1rem; font-size: 1.5rem;">🎯 What is Discord Manager?</h2>
+                            <p style="font-size: 1.1rem; margin-bottom: 1rem;">Discord Manager is a comprehensive, privacy-focused web application that gives you complete control over your Discord servers. Whether you're managing 5 servers or 500, Discord Manager helps you stay organized, secure, and informed.</p>
+                            <p style="color: var(--text-secondary);">No installation required - just login with Discord OAuth and start organizing! 100% free, no ads, no tracking.</p>
                         </div>
 
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 3rem 0;">
                             <div class="insight-section">
-                                <h3>🚀 Features</h3>
-                                <div style="color: var(--text-secondary);">
-                                    <p>• <strong>Smart Organization:</strong> Categorize servers with custom tags</p>
+                                <h3>📋 Organization Features</h3>
+                                <div style="color: var(--text-secondary); line-height: 1.8;">
+                                    <p>• <strong>Smart Categorization:</strong> Auto-categorize servers (Gaming, Work, Social, etc.)</p>
+                                    <p>• <strong>Custom Notes:</strong> Add personal notes to any server</p>
+                                    <p>• <strong>Favorites System:</strong> Star important servers for quick access</p>
+                                    <p>• <strong>Server Reminders:</strong> Set date-based reminders for any server</p>
+                                    <p>• <strong>Last Visited Tracking:</strong> See when you last opened each server</p>
+                                    <p>• <strong>Quick Leave:</strong> Bulk leave multiple servers at once</p>
+                                </div>
+                            </div>
+
+                            <div class="insight-section">
+                                <h3>📈 Analytics & Insights</h3>
+                                <div style="color: var(--text-secondary); line-height: 1.8;">
                                     <p>• <strong>Growth Tracking:</strong> Monitor member count changes over time</p>
-                                    <p>• <strong>Security Audit:</strong> Find servers with elevated permissions</p>
-                                    <p>• <strong>Bulk Actions:</strong> Manage multiple servers at once</p>
-                                    <p>• <strong>Export Data:</strong> Download your server list as CSV/JSON</p>
-                                    <p>• <strong>Advanced Filtering:</strong> Sort and filter by any criteria</p>
+                                    <p>• <strong>Health Dashboard:</strong> See which servers need attention</p>
+                                    <p>• <strong>Server Comparison:</strong> Compare up to 5 servers side-by-side</p>
+                                    <p>• <strong>Role & Permission Analysis:</strong> View all your roles across servers</p>
+                                    <p>• <strong>Game Detection:</strong> Auto-detect gaming servers (23+ games)</p>
+                                    <p>• <strong>LFG Tracker:</strong> Mark servers for finding groups</p>
+                                </div>
+                            </div>
+
+                            <div class="insight-section">
+                                <h3>🔐 Security Features</h3>
+                                <div style="color: var(--text-secondary); line-height: 1.8;">
+                                    <p>• <strong>Permission Auditor:</strong> Find servers with elevated permissions</p>
+                                    <p>• <strong>Security Scoring:</strong> Health scores based on security factors</p>
+                                    <p>• <strong>Server Setup Guide:</strong> Learn to create servers safely with cold accounts</p>
+                                    <p>• <strong>Bot Safety Guide:</strong> Add bots without compromising security</p>
+                                    <p>• <strong>Risk Detection:</strong> Identify servers with admin access</p>
+                                </div>
+                            </div>
+
+                            <div class="insight-section">
+                                <h3>🎨 Customization</h3>
+                                <div style="color: var(--text-secondary); line-height: 1.8;">
+                                    <p>• <strong>Dark/Light Themes:</strong> Switch between themes instantly</p>
+                                    <p>• <strong>Saved Presets:</strong> Save your filter/selection workflows</p>
+                                    <p>• <strong>Advanced Filtering:</strong> Filter by category, size, ownership, etc.</p>
+                                    <p>• <strong>Custom Sorting:</strong> Sort by any metric (members, health, growth)</p>
+                                    <p>• <strong>Mobile Optimized:</strong> Works perfectly on phones and tablets</p>
+                                </div>
+                            </div>
+
+                            <div class="insight-section">
+                                <h3>💾 Export & Backup</h3>
+                                <div style="color: var(--text-secondary); line-height: 1.8;">
+                                    <p>• <strong>CSV Export:</strong> Export server list to spreadsheet</p>
+                                    <p>• <strong>JSON Export:</strong> Download structured data</p>
+                                    <p>• <strong>PDF Reports:</strong> Generate professional server reports</p>
+                                    <p>• <strong>Calendar Sync:</strong> Export reminders to Google Calendar, Outlook, etc.</p>
+                                    <p>• <strong>Full Backup:</strong> Export ALL your data (notes, categories, favorites)</p>
                                 </div>
                             </div>
 
                             <div class="insight-section">
                                 <h3>🔐 Privacy & Security</h3>
-                                <div style="color: var(--text-secondary);">
+                                <div style="color: var(--text-secondary); line-height: 1.8;">
                                     <p>• <strong>No Data Storage:</strong> We don't store your Discord data on our servers</p>
-                                    <p>• <strong>Local Storage Only:</strong> Your categories and preferences stay in your browser</p>
+                                    <p>• <strong>Local Storage Only:</strong> Everything stays in your browser</p>
                                     <p>• <strong>OAuth Authentication:</strong> Secure Discord login - we never see your password</p>
-                                    <p>• <strong>Open Source:</strong> Transparent code you can review</p>
-                                    <p>• <strong>No Tracking:</strong> We don't use analytics or tracking cookies</p>
-                                    <p>• <strong>Read-Only Access:</strong> We can't modify your servers or send messages</p>
+                                    <p>• <strong>Read-Only Access:</strong> We can't modify servers or send messages</p>
+                                    <p>• <strong>No Tracking:</strong> Zero analytics or tracking cookies</p>
+                                    <p>• <strong>Open Source Ready:</strong> Transparent code you can review</p>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="insight-section">
-                                <h3>❓ How It Works</h3>
-                                <div style="color: var(--text-secondary);">
-                                    <p><strong>1. Login:</strong> Click "Login with Discord" below</p>
-                                    <p><strong>2. Authorize:</strong> Grant permission to view your servers (read-only)</p>
-                                    <p><strong>3. Organize:</strong> Categorize, filter, and manage your servers</p>
-                                    <p><strong>4. Export:</strong> Download your organized server list anytime</p>
-                                    <p><strong>5. Track:</strong> Watch server growth over time with automatic snapshots</p>
+                        <div class="info-box" style="background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(88, 101, 242, 0.1)); border: 1px solid var(--accent-primary); margin-top: 2rem;">
+                            <h3 style="color: var(--accent-primary); margin-bottom: 1rem; font-size: 1.3rem;">❓ How It Works</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                                <div>
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">1️⃣</div>
+                                    <strong>Login</strong>
+                                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Click "Login with Discord" - uses official OAuth</p>
+                                </div>
+                                <div>
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">2️⃣</div>
+                                    <strong>Authorize</strong>
+                                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Grant read-only permission to view your servers</p>
+                                </div>
+                                <div>
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">3️⃣</div>
+                                    <strong>Organize</strong>
+                                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Categorize, filter, and manage all your servers</p>
+                                </div>
+                                <div>
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">4️⃣</div>
+                                    <strong>Track & Export</strong>
+                                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Monitor growth, export data, stay organized</p>
                                 </div>
                             </div>
                         </div>
 
                         <div class="info-box" style="margin-top: 2rem;">
-                            <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">⚠️ Important Note</h3>
-                            <p><strong>This is NOT a phishing site!</strong> Discord Manager uses official Discord OAuth for authentication. We never ask for your password and cannot access your account credentials.</p>
-                            <p style="margin-top: 1rem;">If your antivirus flagged this site, it's a false positive because we're a new domain. You can safely whitelist discordmanage.com or <a href="https://www.avg.com/en-us/false-positive-file-form" target="_blank" style="color: var(--accent-secondary);">report the false positive to your antivirus</a>.</p>
+                            <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">⚠️ Important: This is NOT a Phishing Site</h3>
+                            <p><strong>Discord Manager uses official Discord OAuth for authentication.</strong> We never ask for your password and cannot access your account credentials. You can verify the OAuth redirect goes to discord.com (not a fake site).</p>
+                            <p style="margin-top: 1rem; color: var(--text-secondary);">If your antivirus flagged this site, it's a false positive because we're a new domain. You can safely whitelist discordmanage.com or <a href="https://www.avg.com/en-us/false-positive-file-form" target="_blank" style="color: var(--accent-secondary);">report the false positive to your antivirus</a>.</p>
                         </div>
 
                         <div class="login-section">
@@ -3981,6 +4298,12 @@ END:VEVENT
                             <button class="tab ${state.currentTab === 'guide' ? 'active' : ''}" onclick="switchTab('guide')">
                                 🛡️ Safety Guide
                             </button>
+                            <button class="tab ${state.currentTab === 'serversetup' ? 'active' : ''}" onclick="switchTab('serversetup')">
+                                🏗️ Server Setup
+                            </button>
+                            <button class="tab ${state.currentTab === 'bots' ? 'active' : ''}" onclick="switchTab('bots')">
+                                🤖 Bot Guide
+                            </button>
                         </div>
                     ` : ''}
 
@@ -3989,6 +4312,8 @@ END:VEVENT
                     ${state.currentTab === 'tools' ? renderToolsTab() : ''}
                     ${state.currentTab === 'insights' ? renderInsightsTab() : ''}
                     ${state.currentTab === 'guide' ? renderGuideTab() : ''}
+                    ${state.currentTab === 'serversetup' ? renderServerSetupTab() : ''}
+                    ${state.currentTab === 'bots' ? renderBotGuideTab() : ''}
                 </div>
             `;
         }
