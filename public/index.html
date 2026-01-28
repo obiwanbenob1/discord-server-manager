@@ -4050,17 +4050,23 @@ END:VEVENT
         async function loadAllServerEvents(token) {
             try {
                 console.log('Fetching scheduled events for all servers...');
+                console.log(`Total servers to check: ${state.servers.length}`);
                 state.serverEvents = [];
                 
                 // Fetch events for each server
                 const eventPromises = state.servers.map(async (server) => {
                     try {
+                        console.log(`Fetching events for ${server.name} (${server.id})...`);
                         const response = await fetch(`/api/guilds/${server.id}/events`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         });
                         
+                        console.log(`Response status for ${server.name}: ${response.status}`);
+                        
                         if (response.ok) {
                             const events = await response.json();
+                            console.log(`Found ${events.length} events in ${server.name}`);
+                            
                             // Add guild info to each event
                             return events.map(event => ({
                                 ...event,
@@ -4068,6 +4074,8 @@ END:VEVENT
                                 guild_name: server.name,
                                 guild_icon: server.icon
                             }));
+                        } else {
+                            console.warn(`Failed to fetch events for ${server.name}: ${response.status}`);
                         }
                         return [];
                     } catch (e) {
@@ -4079,7 +4087,8 @@ END:VEVENT
                 const allEvents = await Promise.all(eventPromises);
                 state.serverEvents = allEvents.flat();
                 
-                console.log(`Loaded ${state.serverEvents.length} total events across all servers`);
+                console.log(`✅ Loaded ${state.serverEvents.length} total events across all servers`);
+                console.log('Events:', state.serverEvents);
                 
                 // Load interested events from localStorage
                 const interested = localStorage.getItem('discord_interested_events');
