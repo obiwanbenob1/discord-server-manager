@@ -275,6 +275,39 @@ app.get('/api/connections', async (req, res) => {
     }
 });
 
+// Get scheduled events for a specific guild
+app.get('/api/guilds/:guildId/events', async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { guildId } = req.params;
+
+    try {
+        const eventsResponse = await axios.get(`https://discord.com/api/guilds/${guildId}/scheduled-events`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        res.json(eventsResponse.data);
+    } catch (error) {
+        // If error is 403 or 404, return empty array (guild may not have events or permission issues)
+        if (error.response?.status === 403 || error.response?.status === 404) {
+            return res.json([]);
+        }
+        
+        console.error('Events fetch error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch events',
+            details: error.response?.data
+        });
+    }
+});
+
 // Leave a guild
 app.delete('/api/guilds/:guildId', async (req, res) => {
     const { guildId } = req.params;
