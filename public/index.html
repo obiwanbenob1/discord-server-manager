@@ -3249,7 +3249,7 @@ END:VEVENT
                         avatar: state.user.avatar
                     },
                     servers: state.servers.map(server => {
-                        const health = state.serverHealth[server.id] || { score: 0, issues: [] };
+                        const health = (state.serverHealth && state.serverHealth[server.id]) || { score: 0, issues: [], factors: [] };
                         const growth = getServerGrowth(server.id);
                         const permissions = analyzePermissions(server);
                         
@@ -3262,14 +3262,14 @@ END:VEVENT
                             permissions: permissions.map(p => p.text),
                             categories: categorizeServer(server),
                             healthScore: health.score,
-                            healthIssues: health.issues,
+                            healthIssues: health.issues || [],
                             growth: growth,
-                            favorite: state.favoriteServers.has(server.id),
-                            notes: state.serverNotes[server.id] || null,
-                            reminder: state.serverReminders[server.id] || null,
-                            lfgServer: state.lfgServers.has(server.id),
-                            detectedGame: state.gameDetections[server.id] || null,
-                            visitHistory: state.visitHistory[server.id] || []
+                            favorite: state.favoriteServers && state.favoriteServers.has(server.id),
+                            notes: (state.serverNotes && state.serverNotes[server.id]) || null,
+                            reminder: (state.serverReminders && state.serverReminders[server.id]) || null,
+                            lfgServer: state.lfgServers && state.lfgServers.has(server.id),
+                            detectedGame: (state.gameDetections && state.gameDetections[server.id]) || null,
+                            visitHistory: (state.visitHistory && state.visitHistory[server.id]) || []
                         };
                     }),
                     connections: state.connections.map(c => ({
@@ -3282,10 +3282,10 @@ END:VEVENT
                         ownedServers: state.servers.filter(s => s.owner).length,
                         largeServers: state.servers.filter(s => s.memberCount >= 5000).length,
                         smallServers: state.servers.filter(s => s.memberCount < 100).length,
-                        favoriteServers: state.favoriteServers.size,
-                        categorizedServers: Object.keys(state.serverCategories).length,
-                        serversWithNotes: Object.keys(state.serverNotes).length,
-                        lfgServers: state.lfgServers.size,
+                        favoriteServers: (state.favoriteServers && state.favoriteServers.size) || 0,
+                        categorizedServers: (state.serverCategories && Object.keys(state.serverCategories).length) || 0,
+                        serversWithNotes: (state.serverNotes && Object.keys(state.serverNotes).length) || 0,
+                        lfgServers: (state.lfgServers && state.lfgServers.size) || 0,
                         adminServers: state.servers.filter(s => {
                             const perms = analyzePermissions(s);
                             return perms.some(p => p.level === 'high');
@@ -3293,9 +3293,9 @@ END:VEVENT
                     },
                     permissions: getPermissionDetails(),
                     growthTracking: {
-                        lastSnapshot: state.lastSnapshot,
-                        totalSnapshots: Object.values(state.growthHistory).reduce((sum, h) => sum + h.length, 0),
-                        trackedServers: Object.keys(state.growthHistory).length
+                        lastSnapshot: state.lastSnapshot || null,
+                        totalSnapshots: (state.growthHistory && Object.values(state.growthHistory).reduce((sum, h) => sum + h.length, 0)) || 0,
+                        trackedServers: (state.growthHistory && Object.keys(state.growthHistory).length) || 0
                     }
                 };
                 
@@ -3312,8 +3312,8 @@ END:VEVENT
 Exported data includes:
 • ${data.servers.length} servers with full details
 • ${data.connections.length} connected accounts
-• ${Object.keys(state.serverCategories).length} categorized servers
-• ${Object.keys(state.serverNotes).length} server notes
+• ${(state.serverCategories && Object.keys(state.serverCategories).length) || 0} categorized servers
+• ${(state.serverNotes && Object.keys(state.serverNotes).length) || 0} server notes
 • Growth tracking data
 • Permission analysis
 • And much more!`);
