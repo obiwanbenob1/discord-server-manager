@@ -793,7 +793,8 @@
             // UI state
             searchTerm: '',
             sortBy: 'name',
-            categoryFilter: 'all', // all, gaming, personal, work, large, owned, uncategorized, favorites
+            categoryFilter: 'all',
+            bulkLeaveQueue: null, // all, gaming, personal, work, large, owned, uncategorized, favorites
             showHealthScores: true,
             
             // Manual categorization (stored in localStorage)
@@ -1074,6 +1075,7 @@
                 searchTerm: '',
                 sortBy: 'name',
                 categoryFilter: 'all',
+            bulkLeaveQueue: null,
                 growthHistory: state.growthHistory, // Keep growth history
                 lastSnapshot: state.lastSnapshot,
                 accounts: []
@@ -2174,6 +2176,337 @@
             modalDiv.innerHTML = modalHtml;
             document.body.appendChild(modalDiv);
         }
+        // ===== REAL BULK LEAVE WITH API =====
+        async function bulkLeaveServers() {
+            const selectedArray = Array.from(state.selectedServers);
+            const nonOwnedSelected = selectedArray.filter(id => {
+                const server = state.servers.find(s => s.id === id);
+                return server && !server.owner;
+            });
+
+            if (nonOwnedSelected.length === 0) {
+                alert('❌ Please select non-owned servers to leave!\n\nYou cannot leave servers you own.');
+                return;
+            }
+
+            const servers = nonOwnedSelected.map(id => state.servers.find(s => s.id === id)).filter(Boolean);
+            
+            // Show confirmation modal
+            showBulkLeaveConfirmationModal(servers);
+        }
+
+        function showBulkLeaveConfirmationModal(servers) {
+            const modalHtml = `
+                <div class="modal-overlay" onclick="event.target === this && closeBulkLeaveModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
+                        <h2 style="color: var(--accent-danger);">⚠️ Confirm Bulk Leave</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            You're about to leave <strong style="color: var(--accent-primary);">${servers.length} server(s)</strong>. This action cannot be undone.
+                        </p>
+                        
+                        <div class="warning-box" style="margin-bottom: 1.5rem;">
+                            <strong>⚠️ Warning:</strong> You will need to be re-invited to rejoin these servers.
+                        </div>
+
+                        <div style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                            <h4 style="margin-bottom: 1rem; color: var(--accent-primary);">Servers to Leave:</h4>
+                            ${servers.map((s, i) => `
+                                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: var(--bg-card); border-radius: 6px; margin-bottom: 0.5rem;">
+                                    <div style="font-weight: bold; color: var(--text-secondary); min-width: 30px;">${i + 1}.</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold;">${s.name}</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.85rem;">${s.memberCount.toLocaleString()} members</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn" onclick="closeBulkLeaveModal()" style="flex: 1;">
+                                Cancel
+                            </button>
+                            <button class="btn btn-danger" onclick="executeBulkLeave()" style="flex: 1;">
+                                Leave ${servers.length} Server${servers.length > 1 ? 's' : ''}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'bulk-leave-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+
+            // Store servers in state for execution
+            state.bulkLeaveQueue = servers;
+        }
+
+        function closeBulkLeaveModal() {
+            const modal = document.getElementById('bulk-leave-modal');
+            if (modal) modal.remove();
+            
+            const progressModal = document.getElementById('bulk-leave-progress-modal');
+            if (progressModal) progressModal.remove();
+            
+            state.bulkLeaveQueue = null;
+        }
+
+        async function executeBulkLeave() {
+            if (!state.bulkLeaveQueue || state.bulkLeaveQueue.length === 0) return;
+
+            const servers = state.bulkLeaveQueue;
+            
+            // Close confirmation, show progress modal
+            document.getElementById('bulk-leave-modal').remove();
+            showBulkLeaveProgressModal(servers);
+
+            let succeeded = [];
+            let failed = [];
+            let skipped = [];
+
+            for (let i = 0; i < servers.length; i++) {
+                const server = servers[i];
+                
+                // Update progress
+                updateBulkLeaveProgress(i + 1, servers.length, server.name, 'leaving');
+
+                try {
+                    const response = await fetch(`/api/guilds/${server.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${state.accessToken}`
+                        }
+                    });
+
+                    if (response.ok || response.status === 204) {
+                        // Success!
+                        succeeded.push(server);
+                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'success');
+                        
+                        // Remove from state
+                        state.servers = state.servers.filter(s => s.id !== server.id);
+                        state.selectedServers.delete(server.id);
+                        
+                    } else if (response.status === 403) {
+                        // Permission denied (likely server owner)
+                        const errorData = await response.json().catch(() => ({}));
+                        skipped.push({ server, reason: 'Permission denied (you may be the owner)' });
+                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'skipped');
+                        
+                    } else if (response.status === 429) {
+                        // Rate limited
+                        failed.push({ server, reason: 'Rate limited - please try again later' });
+                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'failed');
+                        
+                        // Wait longer before continuing
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        
+                    } else {
+                        // Other error
+                        const errorData = await response.json().catch(() => ({}));
+                        failed.push({ server, reason: errorData.error || `HTTP ${response.status}` });
+                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'failed');
+                    }
+                    
+                } catch (error) {
+                    failed.push({ server, reason: error.message });
+                    updateBulkLeaveProgress(i + 1, servers.length, server.name, 'failed');
+                }
+
+                // Rate limiting: Wait 1.5 seconds between each request to avoid Discord rate limits
+                if (i < servers.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
+
+            // Show final results
+            showBulkLeaveResults(succeeded, failed, skipped);
+        }
+
+        function showBulkLeaveProgressModal(servers) {
+            const modalHtml = `
+                <div class="modal-overlay">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+                        <h2>🔄 Leaving Servers...</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Please wait while we leave your selected servers.
+                        </p>
+
+                        <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                            <div id="bulk-leave-current-server" style="font-weight: bold; margin-bottom: 1rem; color: var(--accent-primary);">
+                                Preparing...
+                            </div>
+                            
+                            <div id="bulk-leave-progress-bar-container" style="background: var(--bg-card); border-radius: 8px; height: 30px; overflow: hidden; margin-bottom: 1rem;">
+                                <div id="bulk-leave-progress-bar" style="background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                            </div>
+                            
+                            <div id="bulk-leave-progress-text" style="color: var(--text-secondary); text-align: center;">
+                                0 / ${servers.length} servers
+                            </div>
+                        </div>
+
+                        <div id="bulk-leave-status-log" style="max-height: 200px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem; font-size: 0.85rem;">
+                            <div style="color: var(--text-secondary);">Starting bulk leave operation...</div>
+                        </div>
+
+                        <div style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">
+                            ⏳ This may take a few minutes. Please don't close this window.
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'bulk-leave-progress-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        function updateBulkLeaveProgress(current, total, serverName, status) {
+            const progressPercent = (current / total) * 100;
+            
+            // Update progress bar
+            const progressBar = document.getElementById('bulk-leave-progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${progressPercent}%`;
+            }
+
+            // Update progress text
+            const progressText = document.getElementById('bulk-leave-progress-text');
+            if (progressText) {
+                progressText.textContent = `${current} / ${total} servers`;
+            }
+
+            // Update current server
+            const currentServerEl = document.getElementById('bulk-leave-current-server');
+            if (currentServerEl) {
+                const statusEmoji = {
+                    'leaving': '🔄',
+                    'success': '✅',
+                    'failed': '❌',
+                    'skipped': '⚠️'
+                };
+                currentServerEl.textContent = `${statusEmoji[status]} ${serverName}`;
+            }
+
+            // Add to log
+            const log = document.getElementById('bulk-leave-status-log');
+            if (log) {
+                const statusText = {
+                    'leaving': 'Leaving',
+                    'success': 'Successfully left',
+                    'failed': 'Failed to leave',
+                    'skipped': 'Skipped'
+                };
+                const statusColor = {
+                    'leaving': 'var(--accent-secondary)',
+                    'success': 'var(--accent-primary)',
+                    'failed': 'var(--accent-danger)',
+                    'skipped': 'var(--accent-warning)'
+                };
+                
+                const logEntry = document.createElement('div');
+                logEntry.style.color = statusColor[status];
+                logEntry.style.marginBottom = '0.25rem';
+                logEntry.textContent = `${statusText[status]}: ${serverName}`;
+                log.appendChild(logEntry);
+                
+                // Auto-scroll to bottom
+                log.scrollTop = log.scrollHeight;
+            }
+        }
+
+        function showBulkLeaveResults(succeeded, failed, skipped) {
+            const totalProcessed = succeeded.length + failed.length + skipped.length;
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeBulkLeaveModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
+                        <h2>${succeeded.length === totalProcessed ? '✅' : '⚠️'} Bulk Leave Complete</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Processed ${totalProcessed} server(s)
+                        </p>
+
+                        <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                            ${succeeded.length > 0 ? `
+                                <div class="stat-card" style="border: 2px solid var(--accent-primary);">
+                                    <div class="stat-value" style="color: var(--accent-primary);">${succeeded.length}</div>
+                                    <div class="stat-label">Successfully Left</div>
+                                </div>
+                            ` : ''}
+                            ${failed.length > 0 ? `
+                                <div class="stat-card" style="border: 2px solid var(--accent-danger);">
+                                    <div class="stat-value" style="color: var(--accent-danger);">${failed.length}</div>
+                                    <div class="stat-label">Failed</div>
+                                </div>
+                            ` : ''}
+                            ${skipped.length > 0 ? `
+                                <div class="stat-card" style="border: 2px solid var(--accent-warning);">
+                                    <div class="stat-value" style="color: var(--accent-warning);">${skipped.length}</div>
+                                    <div class="stat-label">Skipped</div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${succeeded.length > 0 ? `
+                            <div style="margin-bottom: 1.5rem;">
+                                <h3 style="color: var(--accent-primary); margin-bottom: 0.75rem;">✅ Successfully Left</h3>
+                                <div style="max-height: 150px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                                    ${succeeded.map(s => `
+                                        <div style="padding: 0.5rem; color: var(--accent-primary);">• ${s.name}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${failed.length > 0 ? `
+                            <div style="margin-bottom: 1.5rem;">
+                                <h3 style="color: var(--accent-danger); margin-bottom: 0.75rem;">❌ Failed</h3>
+                                <div style="max-height: 150px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                                    ${failed.map(f => `
+                                        <div style="padding: 0.5rem; margin-bottom: 0.5rem;">
+                                            <div style="font-weight: bold; color: var(--accent-danger);">${f.server.name}</div>
+                                            <div style="color: var(--text-secondary); font-size: 0.85rem;">${f.reason}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${skipped.length > 0 ? `
+                            <div style="margin-bottom: 1.5rem;">
+                                <h3 style="color: var(--accent-warning); margin-bottom: 0.75rem;">⚠️ Skipped</h3>
+                                <div style="max-height: 150px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                                    ${skipped.map(s => `
+                                        <div style="padding: 0.5rem; margin-bottom: 0.5rem;">
+                                            <div style="font-weight: bold; color: var(--accent-warning);">${s.server.name}</div>
+                                            <div style="color: var(--text-secondary); font-size: 0.85rem;">${s.reason}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <button class="modal-close" onclick="closeBulkLeaveModal(); render();">
+                            Close & Refresh
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Replace progress modal with results
+            document.getElementById('bulk-leave-progress-modal').remove();
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'bulk-leave-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+
+            // Clear selection and refresh server list
+            state.selectedServers.clear();
+        }
 
         // ===== PHASE 1: SERVER DETAILS MODAL =====
         function showServerDetailsModal(serverId) {
@@ -3131,7 +3464,7 @@ END:VEVENT
                     <button class="btn" onclick="compareSelectedServers()" ${stats.selected < 2 ? 'disabled' : ''} title="${stats.selected < 2 ? 'Select at least 2 servers to compare' : 'Compare selected servers'}">
                         ⚖️ Compare ${stats.selected > 0 ? stats.selected : ''}
                     </button>
-                    <button class="btn btn-danger" onclick="startQuickLeave()" ${stats.selected === 0 ? 'disabled' : ''}>
+                    <button class="btn btn-danger" onclick="bulkLeaveServers()" ${stats.selected === 0 ? 'disabled' : ''}>
                         🚪 Quick Leave ${stats.selected}
                     </button>
                     <button class="btn btn-primary" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
