@@ -793,8 +793,7 @@
             // UI state
             searchTerm: '',
             sortBy: 'name',
-            categoryFilter: 'all',
-            bulkLeaveQueue: null, // all, gaming, personal, work, large, owned, uncategorized, favorites
+            categoryFilter: 'all', // all, gaming, personal, work, large, owned, uncategorized, favorites
             showHealthScores: true,
             
             // Manual categorization (stored in localStorage)
@@ -1075,7 +1074,6 @@
                 searchTerm: '',
                 sortBy: 'name',
                 categoryFilter: 'all',
-            bulkLeaveQueue: null,
                 growthHistory: state.growthHistory, // Keep growth history
                 lastSnapshot: state.lastSnapshot,
                 accounts: []
@@ -1350,63 +1348,8 @@
 
         // ===== PHASE 1: SERVER HEALTH SCORING =====
         function calculateServerHealth(serverId) {
-            const server = state.servers.find(s => s.id === serverId);
-            if (!server) return;
-
-            let score = 100;
-            const issues = [];
-
-            // Check 1: Last visited (40 points max penalty)
-            const daysSinceVisit = getDaysSinceVisit(serverId);
-            if (daysSinceVisit === null) {
-                score -= 10;
-                issues.push('Never tracked visit');
-            } else if (daysSinceVisit > 90) {
-                score -= 40;
-                issues.push('Not visited in 90+ days');
-            } else if (daysSinceVisit > 60) {
-                score -= 30;
-                issues.push('Not visited in 60+ days');
-            } else if (daysSinceVisit > 30) {
-                score -= 20;
-                issues.push('Not visited in 30+ days');
-            }
-
-            // Check 2: Risky permissions (30 points max penalty)
-            const perms = analyzePermissions(server);
-            if (perms.some(p => p.level === 'high')) {
-                score -= 30;
-                issues.push('High-risk permissions (Admin)');
-            } else if (perms.some(p => p.level === 'medium')) {
-                score -= 15;
-                issues.push('Medium-risk permissions');
-            }
-
-            // Check 3: Server size (notification overload risk) (15 points max penalty)
-            if (server.memberCount > 50000) {
-                score -= 15;
-                issues.push('Very large server (50k+ members)');
-            } else if (server.memberCount > 10000) {
-                score -= 10;
-                issues.push('Large server (10k+ members)');
-            }
-
-            // Check 4: Uncategorized (10 points penalty)
-            const categories = categorizeServer(server);
-            if (categories.includes('uncategorized') && categories.length === 1) {
-                score -= 10;
-                issues.push('Not categorized');
-            }
-
-            // Check 5: No notes (5 points penalty)
-            if (!state.serverNotes[serverId]) {
-                score -= 5;
-                issues.push('No notes added');
-            }
-
-            score = Math.max(0, Math.min(100, score));
-
-            state.serverHealth[serverId] = { score, issues };
+            const result = calculateEnhancedHealth(serverId);
+            state.serverHealth[serverId] = result;
             savePhase1Data();
         }
 
@@ -2176,337 +2119,6 @@
             modalDiv.innerHTML = modalHtml;
             document.body.appendChild(modalDiv);
         }
-        // ===== REAL BULK LEAVE WITH API =====
-        async function bulkLeaveServers() {
-            const selectedArray = Array.from(state.selectedServers);
-            const nonOwnedSelected = selectedArray.filter(id => {
-                const server = state.servers.find(s => s.id === id);
-                return server && !server.owner;
-            });
-
-            if (nonOwnedSelected.length === 0) {
-                alert('❌ Please select non-owned servers to leave!\n\nYou cannot leave servers you own.');
-                return;
-            }
-
-            const servers = nonOwnedSelected.map(id => state.servers.find(s => s.id === id)).filter(Boolean);
-            
-            // Show confirmation modal
-            showBulkLeaveConfirmationModal(servers);
-        }
-
-        function showBulkLeaveConfirmationModal(servers) {
-            const modalHtml = `
-                <div class="modal-overlay" onclick="event.target === this && closeBulkLeaveModal()">
-                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
-                        <h2 style="color: var(--accent-danger);">⚠️ Confirm Bulk Leave</h2>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            You're about to leave <strong style="color: var(--accent-primary);">${servers.length} server(s)</strong>. This action cannot be undone.
-                        </p>
-                        
-                        <div class="warning-box" style="margin-bottom: 1.5rem;">
-                            <strong>⚠️ Warning:</strong> You will need to be re-invited to rejoin these servers.
-                        </div>
-
-                        <div style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
-                            <h4 style="margin-bottom: 1rem; color: var(--accent-primary);">Servers to Leave:</h4>
-                            ${servers.map((s, i) => `
-                                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: var(--bg-card); border-radius: 6px; margin-bottom: 0.5rem;">
-                                    <div style="font-weight: bold; color: var(--text-secondary); min-width: 30px;">${i + 1}.</div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: bold;">${s.name}</div>
-                                        <div style="color: var(--text-secondary); font-size: 0.85rem;">${s.memberCount.toLocaleString()} members</div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-
-                        <div style="display: flex; gap: 1rem;">
-                            <button class="btn" onclick="closeBulkLeaveModal()" style="flex: 1;">
-                                Cancel
-                            </button>
-                            <button class="btn btn-danger" onclick="executeBulkLeave()" style="flex: 1;">
-                                Leave ${servers.length} Server${servers.length > 1 ? 's' : ''}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const modalDiv = document.createElement('div');
-            modalDiv.id = 'bulk-leave-modal';
-            modalDiv.innerHTML = modalHtml;
-            document.body.appendChild(modalDiv);
-
-            // Store servers in state for execution
-            state.bulkLeaveQueue = servers;
-        }
-
-        function closeBulkLeaveModal() {
-            const modal = document.getElementById('bulk-leave-modal');
-            if (modal) modal.remove();
-            
-            const progressModal = document.getElementById('bulk-leave-progress-modal');
-            if (progressModal) progressModal.remove();
-            
-            state.bulkLeaveQueue = null;
-        }
-
-        async function executeBulkLeave() {
-            if (!state.bulkLeaveQueue || state.bulkLeaveQueue.length === 0) return;
-
-            const servers = state.bulkLeaveQueue;
-            
-            // Close confirmation, show progress modal
-            document.getElementById('bulk-leave-modal').remove();
-            showBulkLeaveProgressModal(servers);
-
-            let succeeded = [];
-            let failed = [];
-            let skipped = [];
-
-            for (let i = 0; i < servers.length; i++) {
-                const server = servers[i];
-                
-                // Update progress
-                updateBulkLeaveProgress(i + 1, servers.length, server.name, 'leaving');
-
-                try {
-                    const response = await fetch(`/api/guilds/${server.id}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${state.accessToken}`
-                        }
-                    });
-
-                    if (response.ok || response.status === 204) {
-                        // Success!
-                        succeeded.push(server);
-                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'success');
-                        
-                        // Remove from state
-                        state.servers = state.servers.filter(s => s.id !== server.id);
-                        state.selectedServers.delete(server.id);
-                        
-                    } else if (response.status === 403) {
-                        // Permission denied (likely server owner)
-                        const errorData = await response.json().catch(() => ({}));
-                        skipped.push({ server, reason: 'Permission denied (you may be the owner)' });
-                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'skipped');
-                        
-                    } else if (response.status === 429) {
-                        // Rate limited
-                        failed.push({ server, reason: 'Rate limited - please try again later' });
-                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'failed');
-                        
-                        // Wait longer before continuing
-                        await new Promise(resolve => setTimeout(resolve, 5000));
-                        
-                    } else {
-                        // Other error
-                        const errorData = await response.json().catch(() => ({}));
-                        failed.push({ server, reason: errorData.error || `HTTP ${response.status}` });
-                        updateBulkLeaveProgress(i + 1, servers.length, server.name, 'failed');
-                    }
-                    
-                } catch (error) {
-                    failed.push({ server, reason: error.message });
-                    updateBulkLeaveProgress(i + 1, servers.length, server.name, 'failed');
-                }
-
-                // Rate limiting: Wait 1.5 seconds between each request to avoid Discord rate limits
-                if (i < servers.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                }
-            }
-
-            // Show final results
-            showBulkLeaveResults(succeeded, failed, skipped);
-        }
-
-        function showBulkLeaveProgressModal(servers) {
-            const modalHtml = `
-                <div class="modal-overlay">
-                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
-                        <h2>🔄 Leaving Servers...</h2>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Please wait while we leave your selected servers.
-                        </p>
-
-                        <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
-                            <div id="bulk-leave-current-server" style="font-weight: bold; margin-bottom: 1rem; color: var(--accent-primary);">
-                                Preparing...
-                            </div>
-                            
-                            <div id="bulk-leave-progress-bar-container" style="background: var(--bg-card); border-radius: 8px; height: 30px; overflow: hidden; margin-bottom: 1rem;">
-                                <div id="bulk-leave-progress-bar" style="background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
-                            </div>
-                            
-                            <div id="bulk-leave-progress-text" style="color: var(--text-secondary); text-align: center;">
-                                0 / ${servers.length} servers
-                            </div>
-                        </div>
-
-                        <div id="bulk-leave-status-log" style="max-height: 200px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem; font-size: 0.85rem;">
-                            <div style="color: var(--text-secondary);">Starting bulk leave operation...</div>
-                        </div>
-
-                        <div style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">
-                            ⏳ This may take a few minutes. Please don't close this window.
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const modalDiv = document.createElement('div');
-            modalDiv.id = 'bulk-leave-progress-modal';
-            modalDiv.innerHTML = modalHtml;
-            document.body.appendChild(modalDiv);
-        }
-
-        function updateBulkLeaveProgress(current, total, serverName, status) {
-            const progressPercent = (current / total) * 100;
-            
-            // Update progress bar
-            const progressBar = document.getElementById('bulk-leave-progress-bar');
-            if (progressBar) {
-                progressBar.style.width = `${progressPercent}%`;
-            }
-
-            // Update progress text
-            const progressText = document.getElementById('bulk-leave-progress-text');
-            if (progressText) {
-                progressText.textContent = `${current} / ${total} servers`;
-            }
-
-            // Update current server
-            const currentServerEl = document.getElementById('bulk-leave-current-server');
-            if (currentServerEl) {
-                const statusEmoji = {
-                    'leaving': '🔄',
-                    'success': '✅',
-                    'failed': '❌',
-                    'skipped': '⚠️'
-                };
-                currentServerEl.textContent = `${statusEmoji[status]} ${serverName}`;
-            }
-
-            // Add to log
-            const log = document.getElementById('bulk-leave-status-log');
-            if (log) {
-                const statusText = {
-                    'leaving': 'Leaving',
-                    'success': 'Successfully left',
-                    'failed': 'Failed to leave',
-                    'skipped': 'Skipped'
-                };
-                const statusColor = {
-                    'leaving': 'var(--accent-secondary)',
-                    'success': 'var(--accent-primary)',
-                    'failed': 'var(--accent-danger)',
-                    'skipped': 'var(--accent-warning)'
-                };
-                
-                const logEntry = document.createElement('div');
-                logEntry.style.color = statusColor[status];
-                logEntry.style.marginBottom = '0.25rem';
-                logEntry.textContent = `${statusText[status]}: ${serverName}`;
-                log.appendChild(logEntry);
-                
-                // Auto-scroll to bottom
-                log.scrollTop = log.scrollHeight;
-            }
-        }
-
-        function showBulkLeaveResults(succeeded, failed, skipped) {
-            const totalProcessed = succeeded.length + failed.length + skipped.length;
-            
-            const modalHtml = `
-                <div class="modal-overlay" onclick="closeBulkLeaveModal()">
-                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
-                        <h2>${succeeded.length === totalProcessed ? '✅' : '⚠️'} Bulk Leave Complete</h2>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Processed ${totalProcessed} server(s)
-                        </p>
-
-                        <div class="stats-grid" style="margin-bottom: 1.5rem;">
-                            ${succeeded.length > 0 ? `
-                                <div class="stat-card" style="border: 2px solid var(--accent-primary);">
-                                    <div class="stat-value" style="color: var(--accent-primary);">${succeeded.length}</div>
-                                    <div class="stat-label">Successfully Left</div>
-                                </div>
-                            ` : ''}
-                            ${failed.length > 0 ? `
-                                <div class="stat-card" style="border: 2px solid var(--accent-danger);">
-                                    <div class="stat-value" style="color: var(--accent-danger);">${failed.length}</div>
-                                    <div class="stat-label">Failed</div>
-                                </div>
-                            ` : ''}
-                            ${skipped.length > 0 ? `
-                                <div class="stat-card" style="border: 2px solid var(--accent-warning);">
-                                    <div class="stat-value" style="color: var(--accent-warning);">${skipped.length}</div>
-                                    <div class="stat-label">Skipped</div>
-                                </div>
-                            ` : ''}
-                        </div>
-
-                        ${succeeded.length > 0 ? `
-                            <div style="margin-bottom: 1.5rem;">
-                                <h3 style="color: var(--accent-primary); margin-bottom: 0.75rem;">✅ Successfully Left</h3>
-                                <div style="max-height: 150px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
-                                    ${succeeded.map(s => `
-                                        <div style="padding: 0.5rem; color: var(--accent-primary);">• ${s.name}</div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${failed.length > 0 ? `
-                            <div style="margin-bottom: 1.5rem;">
-                                <h3 style="color: var(--accent-danger); margin-bottom: 0.75rem;">❌ Failed</h3>
-                                <div style="max-height: 150px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
-                                    ${failed.map(f => `
-                                        <div style="padding: 0.5rem; margin-bottom: 0.5rem;">
-                                            <div style="font-weight: bold; color: var(--accent-danger);">${f.server.name}</div>
-                                            <div style="color: var(--text-secondary); font-size: 0.85rem;">${f.reason}</div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${skipped.length > 0 ? `
-                            <div style="margin-bottom: 1.5rem;">
-                                <h3 style="color: var(--accent-warning); margin-bottom: 0.75rem;">⚠️ Skipped</h3>
-                                <div style="max-height: 150px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
-                                    ${skipped.map(s => `
-                                        <div style="padding: 0.5rem; margin-bottom: 0.5rem;">
-                                            <div style="font-weight: bold; color: var(--accent-warning);">${s.server.name}</div>
-                                            <div style="color: var(--text-secondary); font-size: 0.85rem;">${s.reason}</div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <button class="modal-close" onclick="closeBulkLeaveModal(); render();">
-                            Close & Refresh
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            // Replace progress modal with results
-            document.getElementById('bulk-leave-progress-modal').remove();
-            
-            const modalDiv = document.createElement('div');
-            modalDiv.id = 'bulk-leave-modal';
-            modalDiv.innerHTML = modalHtml;
-            document.body.appendChild(modalDiv);
-
-            // Clear selection and refresh server list
-            state.selectedServers.clear();
-        }
 
         // ===== PHASE 1: SERVER DETAILS MODAL =====
         function showServerDetailsModal(serverId) {
@@ -2602,7 +2214,7 @@
         }
 
         // ===== PHASE 1: HEALTH MODAL (Quick View) =====
-        function showHealthModal(serverId) {
+        function showHealthFactorsModal(serverId) {
             const server = state.servers.find(s => s.id === serverId);
             if (!server) return;
 
@@ -3396,6 +3008,475 @@ END:VEVENT
         }
 
         // ===== RENDER FUNCTIONS =====
+
+        // ===== ENHANCED FEATURE 1: DETAILED PERMISSION ANALYZER =====
+        function getPermissionDetails() {
+            const permissionBreakdown = {
+                administrator: [],
+                manageServer: [],
+                manageRoles: [],
+                manageChannels: [],
+                kickMembers: [],
+                banMembers: [],
+                manageMessages: [],
+                mentionEveryone: [],
+                viewAuditLog: []
+            };
+
+            state.servers.forEach(server => {
+                const permissions = parseInt(server.permissions);
+                
+                if (permissions & 0x8) permissionBreakdown.administrator.push(server);
+                if (permissions & 0x20) permissionBreakdown.manageServer.push(server);
+                if (permissions & 0x10000000) permissionBreakdown.manageRoles.push(server);
+                if (permissions & 0x10) permissionBreakdown.manageChannels.push(server);
+                if (permissions & 0x2) permissionBreakdown.kickMembers.push(server);
+                if (permissions & 0x4) permissionBreakdown.banMembers.push(server);
+                if (permissions & 0x2000) permissionBreakdown.manageMessages.push(server);
+                if (permissions & 0x20000) permissionBreakdown.mentionEveryone.push(server);
+                if (permissions & 0x80) permissionBreakdown.viewAuditLog.push(server);
+            });
+
+            return permissionBreakdown;
+        }
+
+        function showDetailedPermissionsModal() {
+            const perms = getPermissionDetails();
+            const totalDangerousPerms = perms.administrator.length + perms.manageServer.length + 
+                                        perms.banMembers.length + perms.manageRoles.length;
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 900px;">
+                        <h2>🔐 Detailed Permission Analysis</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Comprehensive breakdown of ALL your permissions across ${state.servers.length} servers
+                        </p>
+
+                        ${totalDangerousPerms > 0 ? `
+                            <div class="warning-box" style="margin-bottom: 1.5rem;">
+                                <strong>⚠️ Security Alert:</strong> You have dangerous permissions in ${totalDangerousPerms} server(s). 
+                                Review these carefully to ensure you trust them.
+                            </div>
+                        ` : ''}
+
+                        <div style="max-height: 60vh; overflow-y: auto;">
+                            ${renderPermissionSection('Administrator', '👑', perms.administrator, 'Full control over the server', 'danger')}
+                            ${renderPermissionSection('Manage Server', '⚙️', perms.manageServer, 'Change server settings', 'danger')}
+                            ${renderPermissionSection('Manage Roles', '🎭', perms.manageRoles, 'Create and edit roles', 'warning')}
+                            ${renderPermissionSection('Ban Members', '🔨', perms.banMembers, 'Ban users from server', 'warning')}
+                            ${renderPermissionSection('Kick Members', '👢', perms.kickMembers, 'Remove users from server', 'warning')}
+                            ${renderPermissionSection('Manage Channels', '📝', perms.manageChannels, 'Create and edit channels', 'secondary')}
+                            ${renderPermissionSection('View Audit Log', '📜', perms.viewAuditLog, 'View server audit logs', 'secondary')}
+                            ${renderPermissionSection('Manage Messages', '💬', perms.manageMessages, 'Delete others messages', 'secondary')}
+                            ${renderPermissionSection('Mention Everyone', '📢', perms.mentionEveryone, 'Ping @everyone', 'secondary')}
+                        </div>
+
+                        <button class="modal-close" onclick="closeModal()" style="margin-top: 1.5rem;">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        function renderPermissionSection(title, emoji, servers, description, badgeType) {
+            if (servers.length === 0) return '';
+            
+            return `
+                <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="color: var(--accent-primary); margin-bottom: 0.25rem;">
+                                ${emoji} ${title}
+                            </h3>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;">${description}</p>
+                        </div>
+                        <span class="badge badge-${badgeType}" style="font-size: 1.1rem; padding: 0.5rem 1rem;">
+                            ${servers.length}
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem; max-height: 150px; overflow-y: auto;">
+                        ${servers.map(s => `
+                            <div style="background: var(--bg-card); padding: 0.75rem; border-radius: 6px; font-size: 0.9rem;">
+                                <div style="font-weight: bold; margin-bottom: 0.25rem;">${s.name}</div>
+                                <div style="color: var(--text-secondary); font-size: 0.8rem;">
+                                    ${s.memberCount.toLocaleString()} members
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== ENHANCED FEATURE 2: ADVANCED SERVER COMPARISON =====
+        function showAdvancedComparisonModal() {
+            if (state.serverComparison.length < 2) {
+                alert('Select at least 2 servers to compare!');
+                return;
+            }
+
+            const servers = state.serverComparison
+                .map(id => state.servers.find(s => s.id === id))
+                .filter(Boolean);
+
+            // Calculate metrics for comparison
+            const metrics = servers.map(s => {
+                const health = state.serverHealth[s.id] || { score: 0 };
+                const growth = getServerGrowth(s.id);
+                const perms = analyzePermissions(s);
+                const categories = categorizeServer(s);
+                
+                return {
+                    server: s,
+                    health: health.score,
+                    growth: growth ? growth.percentChange : 0,
+                    hasAdminPerms: perms.some(p => p.level === 'high'),
+                    categoryCount: categories.length,
+                    isOwner: s.owner,
+                    isFavorite: state.favoriteServers.has(s.id),
+                    hasNotes: !!state.serverNotes[s.id]
+                };
+            });
+
+            // Find the "best" server
+            const bestServer = metrics.reduce((best, current) => {
+                let score = 0;
+                if (current.health > best.health) score += 3;
+                if (current.server.memberCount > best.server.memberCount) score += 2;
+                if (current.growth > best.growth) score += 1;
+                if (current.isFavorite && !best.isFavorite) score += 2;
+                return score > 0 ? current : best;
+            }, metrics[0]);
+
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 1000px;">
+                        <h2>⚖️ Advanced Server Comparison</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Comparing ${servers.length} servers side-by-side
+                        </p>
+
+                        ${bestServer ? `
+                            <div class="info-box" style="margin-bottom: 1.5rem; border: 2px solid var(--accent-primary);">
+                                <strong>🏆 Recommended: ${bestServer.server.name}</strong>
+                                <p style="margin-top: 0.5rem; color: var(--text-secondary);">
+                                    Based on health score, size, and growth trends, this appears to be the most active/valuable server.
+                                </p>
+                            </div>
+                        ` : ''}
+
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: var(--bg-secondary);">
+                                        <th style="padding: 0.75rem; text-align: left; border: 1px solid var(--border); min-width: 150px;">Metric</th>
+                                        ${servers.map(s => `
+                                            <th style="padding: 0.75rem; text-align: center; border: 1px solid var(--border); min-width: 200px;">
+                                                ${s.id === bestServer.server.id ? '🏆 ' : ''}${s.name}
+                                            </th>
+                                        `).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${renderComparisonRow('👥 Members', servers, s => s.memberCount.toLocaleString(), true)}
+                                    ${renderComparisonRow('🏥 Health Score', metrics, m => m.health + '/100', true)}
+                                    ${renderComparisonRow('📈 Growth', metrics, m => {
+                                        const g = getServerGrowth(m.server.id);
+                                        return g ? `${g.change > 0 ? '+' : ''}${g.percentChange}%` : 'No data';
+                                    })}
+                                    ${renderComparisonRow('👑 Owner', servers, s => s.owner ? '✅ Yes' : '❌ No')}
+                                    ${renderComparisonRow('🔐 Admin Perms', metrics, m => m.hasAdminPerms ? '⚠️ Yes' : '✅ No')}
+                                    ${renderComparisonRow('⭐ Favorite', metrics, m => m.isFavorite ? '✅ Yes' : '❌ No')}
+                                    ${renderComparisonRow('📝 Has Notes', metrics, m => m.hasNotes ? '✅ Yes' : '❌ No')}
+                                    ${renderComparisonRow('📁 Categories', metrics, m => m.categoryCount)}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                            <button class="btn" onclick="clearComparison(); closeModal(); render();" style="flex: 1;">
+                                Clear Comparison
+                            </button>
+                            <button class="modal-close" onclick="closeModal()" style="flex: 1;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
+        function renderComparisonRow(label, items, getValue, highlightMax = false) {
+            const values = items.map(getValue);
+            const maxValue = highlightMax ? Math.max(...values.map(v => typeof v === 'string' ? parseFloat(v.replace(/[^0-9.-]/g, '')) || 0 : v)) : null;
+            
+            return `
+                <tr>
+                    <td style="padding: 0.75rem; border: 1px solid var(--border); font-weight: bold;">${label}</td>
+                    ${values.map((v, i) => {
+                        const numValue = typeof v === 'string' ? parseFloat(v.replace(/[^0-9.-]/g, '')) || 0 : v;
+                        const isMax = highlightMax && numValue === maxValue && maxValue > 0;
+                        return `
+                            <td style="padding: 0.75rem; text-align: center; border: 1px solid var(--border); ${isMax ? 'background: rgba(0, 255, 136, 0.1); font-weight: bold; color: var(--accent-primary);' : ''}">
+                                ${v}
+                            </td>
+                        `;
+                    }).join('')}
+                </tr>
+            `;
+        }
+
+        // ===== ENHANCED FEATURE 3: COMPREHENSIVE DATA EXPORT =====
+        function exportComprehensiveData() {
+            const data = {
+                exportDate: new Date().toISOString(),
+                exportVersion: '2.0',
+                user: {
+                    id: state.user.id,
+                    username: state.user.username,
+                    discriminator: state.user.discriminator,
+                    avatar: state.user.avatar
+                },
+                servers: state.servers.map(server => {
+                    const health = state.serverHealth[server.id] || { score: 0, issues: [] };
+                    const growth = getServerGrowth(server.id);
+                    const permissions = analyzePermissions(server);
+                    
+                    return {
+                        id: server.id,
+                        name: server.name,
+                        icon: server.icon,
+                        memberCount: server.memberCount,
+                        owner: server.owner,
+                        permissions: permissions.map(p => p.text),
+                        categories: categorizeServer(server),
+                        healthScore: health.score,
+                        healthIssues: health.issues,
+                        growth: growth,
+                        favorite: state.favoriteServers.has(server.id),
+                        notes: state.serverNotes[server.id] || null,
+                        reminder: state.serverReminders[server.id] || null,
+                        lfgServer: state.lfgServers.has(server.id),
+                        detectedGame: state.gameDetections[server.id] || null,
+                        visitHistory: state.visitHistory[server.id] || []
+                    };
+                }),
+                connections: state.connections.map(c => ({
+                    type: c.type,
+                    name: c.name,
+                    verified: c.verified
+                })),
+                statistics: {
+                    totalServers: state.servers.length,
+                    ownedServers: state.servers.filter(s => s.owner).length,
+                    largeServers: state.servers.filter(s => s.memberCount >= 5000).length,
+                    smallServers: state.servers.filter(s => s.memberCount < 100).length,
+                    favoriteServers: state.favoriteServers.size,
+                    categorizedServers: Object.keys(state.serverCategories).length,
+                    serversWithNotes: Object.keys(state.serverNotes).length,
+                    lfgServers: state.lfgServers.size,
+                    adminServers: state.servers.filter(s => {
+                        const perms = analyzePermissions(s);
+                        return perms.some(p => p.level === 'high');
+                    }).length
+                },
+                permissions: getPermissionDetails(),
+                growthTracking: {
+                    lastSnapshot: state.lastSnapshot,
+                    totalSnapshots: Object.values(state.growthHistory).reduce((sum, h) => sum + h.length, 0),
+                    trackedServers: Object.keys(state.growthHistory).length
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `discord-complete-export-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert(`✅ Comprehensive export complete!
+
+Exported data includes:
+• ${data.servers.length} servers with full details
+• ${data.connections.length} connected accounts
+• ${Object.keys(state.serverCategories).length} categorized servers
+• ${Object.keys(state.serverNotes).length} server notes
+• Growth tracking data
+• Permission analysis
+• And much more!`);
+        }
+
+        // ===== ENHANCED FEATURE 5: BETTER HEALTH SCORES =====
+        function calculateEnhancedHealth(serverId) {
+            const server = state.servers.find(s => s.id === serverId);
+            if (!server) return { score: 0, issues: [], factors: [] };
+            
+            let score = 50; // Base score
+            const issues = [];
+            const factors = [];
+            
+            // Member count (max +30)
+            if (server.memberCount >= 10000) {
+                score += 30;
+                factors.push({ text: 'Very large community', points: 30 });
+            } else if (server.memberCount >= 1000) {
+                score += 20;
+                factors.push({ text: 'Large community', points: 20 });
+            } else if (server.memberCount >= 100) {
+                score += 10;
+                factors.push({ text: 'Medium community', points: 10 });
+            } else if (server.memberCount < 10) {
+                score -= 20;
+                issues.push('Very small server (< 10 members)');
+                factors.push({ text: 'Very small community', points: -20 });
+            } else if (server.memberCount < 50) {
+                score -= 10;
+                issues.push('Small server (< 50 members)');
+                factors.push({ text: 'Small community', points: -10 });
+            }
+            
+            // Growth trend (max ±20)
+            const growth = getServerGrowth(serverId);
+            if (growth) {
+                if (growth.change > 100) {
+                    score += 20;
+                    factors.push({ text: 'Rapid growth', points: 20 });
+                } else if (growth.change > 0) {
+                    score += 10;
+                    factors.push({ text: 'Growing', points: 10 });
+                } else if (growth.change < -100) {
+                    score -= 20;
+                    issues.push('Rapidly losing members');
+                    factors.push({ text: 'Rapid decline', points: -20 });
+                } else if (growth.change < 0) {
+                    score -= 10;
+                    issues.push('Losing members');
+                    factors.push({ text: 'Declining', points: -10 });
+                }
+            }
+            
+            // Ownership (+15)
+            if (server.owner) {
+                score += 15;
+                factors.push({ text: 'You own this server', points: 15 });
+            }
+            
+            // Favorite (+10)
+            if (state.favoriteServers.has(serverId)) {
+                score += 10;
+                factors.push({ text: 'Marked as favorite', points: 10 });
+            }
+            
+            // Has notes (+5)
+            if (state.serverNotes[serverId]) {
+                score += 5;
+                factors.push({ text: 'Has personal notes', points: 5 });
+            }
+            
+            // Last visited (max ±15)
+            const daysSinceVisit = getDaysSinceVisit(serverId);
+            if (daysSinceVisit !== null) {
+                if (daysSinceVisit > 180) {
+                    score -= 15;
+                    issues.push('Not visited in 6+ months');
+                    factors.push({ text: 'Inactive (6+ months)', points: -15 });
+                } else if (daysSinceVisit > 90) {
+                    score -= 10;
+                    issues.push('Not visited in 3+ months');
+                    factors.push({ text: 'Inactive (3+ months)', points: -10 });
+                } else if (daysSinceVisit > 30) {
+                    score -= 5;
+                    issues.push('Not visited recently');
+                    factors.push({ text: 'Not visited in 30+ days', points: -5 });
+                } else if (daysSinceVisit <= 7) {
+                    score += 10;
+                    factors.push({ text: 'Recently active', points: 10 });
+                }
+            }
+            
+            // Admin permissions (risky -5)
+            const perms = analyzePermissions(server);
+            if (perms.some(p => p.level === 'high') && !server.owner) {
+                score -= 5;
+                issues.push('Has elevated permissions');
+                factors.push({ text: 'Security risk (admin perms)', points: -5 });
+            }
+            
+            // Clamp score between 0-100
+            score = Math.max(0, Math.min(100, Math.round(score)));
+            
+            return { score, issues, factors };
+        }
+
+        function showHealthFactorsModal(serverId) {
+            const server = state.servers.find(s => s.id === serverId);
+            if (!server) return;
+
+            const health = calculateEnhancedHealth(serverId);
+
+            const modalHtml = `
+                <div class="modal-overlay" onclick="closeModal()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
+                        <h2>🏥 Health Score Breakdown</h2>
+                        <h3 style="color: var(--text-secondary); margin-bottom: 1.5rem;">${server.name}</h3>
+
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <div style="font-size: 4rem; font-weight: bold; color: ${getHealthColor(health.score)};">
+                                ${health.score}
+                            </div>
+                            <div style="font-size: 1.5rem; color: var(--text-secondary);">
+                                ${getHealthLabel(health.score)}
+                            </div>
+                        </div>
+
+                        ${health.factors.length > 0 ? `
+                            <div style="margin-bottom: 2rem;">
+                                <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">📊 Score Factors</h3>
+                                <div style="background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                                    ${health.factors.map(f => `
+                                        <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border); align-items: center;">
+                                            <span>${f.text}</span>
+                                            <span style="font-weight: bold; color: ${f.points > 0 ? 'var(--accent-primary)' : 'var(--accent-danger)'};">
+                                                ${f.points > 0 ? '+' : ''}${f.points}
+                                            </span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${health.issues.length > 0 ? `
+                            <div class="warning-box">
+                                <strong>⚠️ Issues Detected:</strong>
+                                <ul style="margin: 0.5rem 0 0 1.5rem;">
+                                    ${health.issues.map(i => `<li>${i}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+
+                        <button class="modal-close" onclick="closeModal()" style="margin-top: 1.5rem;">Close</button>
+                    </div>
+                </div>
+            `;
+
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'instruction-modal';
+            modalDiv.innerHTML = modalHtml;
+            document.body.appendChild(modalDiv);
+        }
+
         function renderServersTab() {
             const stats = getServerStats();
             const filtered = getFilteredServers();
@@ -3461,10 +3542,10 @@ END:VEVENT
                     <button class="btn" onclick="showBulkCategoryModal()" ${stats.selected === 0 ? 'disabled' : ''}>
                         📁 Categorize ${stats.selected}
                     </button>
-                    <button class="btn" onclick="compareSelectedServers()" ${stats.selected < 2 ? 'disabled' : ''} title="${stats.selected < 2 ? 'Select at least 2 servers to compare' : 'Compare selected servers'}">
+                    <button class="btn" onclick="showAdvancedComparisonModal()" ${stats.selected < 2 ? 'disabled' : ''} title="${stats.selected < 2 ? 'Select at least 2 servers to compare' : 'Compare selected servers'}">
                         ⚖️ Compare ${stats.selected > 0 ? stats.selected : ''}
                     </button>
-                    <button class="btn btn-danger" onclick="bulkLeaveServers()" ${stats.selected === 0 ? 'disabled' : ''}>
+                    <button class="btn btn-danger" onclick="startQuickLeave()" ${stats.selected === 0 ? 'disabled' : ''}>
                         🚪 Quick Leave ${stats.selected}
                     </button>
                     <button class="btn btn-primary" onclick="openSelectedServers()" ${stats.selected === 0 ? 'disabled' : ''}>
@@ -3521,7 +3602,7 @@ END:VEVENT
                                         </div>
                                         <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                                             ${state.showHealthScores ? `
-                                                <span class="badge" style="background: ${getHealthColor(health.score)}20; border: 1px solid ${getHealthColor(health.score)}; color: ${getHealthColor(health.score)};" onclick="event.stopPropagation(); showHealthModal('${server.id}')" title="Click for details">
+                                                <span class="badge" style="background: ${getHealthColor(health.score)}20; border: 1px solid ${getHealthColor(health.score)}; color: ${getHealthColor(health.score)};" onclick="event.stopPropagation(); showHealthFactorsModal('${server.id}')" title="Click for details">
                                                     ${getHealthLabel(health.score)} ${health.score}
                                                 </span>
                                             ` : ''}
@@ -3589,6 +3670,9 @@ END:VEVENT
                             </div>
                         </div>
 
+                        <button class="btn btn-primary" onclick="showDetailedPermissionsModal()" style="width: 100%; margin-bottom: 1.5rem;">
+                            🔍 View Detailed Permission Breakdown
+                        </button>
                         <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">Your Roles:</h4>
                         ${Array.from(roleMap.entries()).map(([role, servers]) => {
                             const highestLevel = servers.some(s => s.level === 'high') ? 'high' : servers.some(s => s.level === 'medium') ? 'medium' : 'low';
@@ -3651,6 +3735,7 @@ END:VEVENT
                             <button class="btn" onclick="exportToCSV()">📊 Export to CSV</button>
                             <button class="btn" onclick="exportToJSON()">📄 Export to JSON</button>
                             <button class="btn btn-primary" onclick="exportToPDF()">📑 Export PDF Report</button>
+                            <button class="btn btn-primary" onclick="exportComprehensiveData()" style="background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); font-weight: bold;">💾 Comprehensive Export</button>
                             <button class="btn" onclick="exportRemindersToCalendar()">📅 Export Reminders</button>
                         </div>
                         <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
