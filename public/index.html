@@ -3238,75 +3238,76 @@ END:VEVENT
 
         // ===== ENHANCED FEATURE 3: COMPREHENSIVE DATA EXPORT =====
         function exportComprehensiveData() {
-            const data = {
-                exportDate: new Date().toISOString(),
-                exportVersion: '2.0',
-                user: {
-                    id: state.user.id,
-                    username: state.user.username,
-                    discriminator: state.user.discriminator,
-                    avatar: state.user.avatar
-                },
-                servers: state.servers.map(server => {
-                    const health = state.serverHealth[server.id] || { score: 0, issues: [] };
-                    const growth = getServerGrowth(server.id);
-                    const permissions = analyzePermissions(server);
-                    
-                    return {
-                        id: server.id,
-                        name: server.name,
-                        icon: server.icon,
-                        memberCount: server.memberCount,
-                        owner: server.owner,
-                        permissions: permissions.map(p => p.text),
-                        categories: categorizeServer(server),
-                        healthScore: health.score,
-                        healthIssues: health.issues,
-                        growth: growth,
-                        favorite: state.favoriteServers.has(server.id),
-                        notes: state.serverNotes[server.id] || null,
-                        reminder: state.serverReminders[server.id] || null,
-                        lfgServer: state.lfgServers.has(server.id),
-                        detectedGame: state.gameDetections[server.id] || null,
-                        visitHistory: state.visitHistory[server.id] || []
-                    };
-                }),
-                connections: state.connections.map(c => ({
-                    type: c.type,
-                    name: c.name,
-                    verified: c.verified
-                })),
-                statistics: {
-                    totalServers: state.servers.length,
-                    ownedServers: state.servers.filter(s => s.owner).length,
-                    largeServers: state.servers.filter(s => s.memberCount >= 5000).length,
-                    smallServers: state.servers.filter(s => s.memberCount < 100).length,
-                    favoriteServers: state.favoriteServers.size,
-                    categorizedServers: Object.keys(state.serverCategories).length,
-                    serversWithNotes: Object.keys(state.serverNotes).length,
-                    lfgServers: state.lfgServers.size,
-                    adminServers: state.servers.filter(s => {
-                        const perms = analyzePermissions(s);
-                        return perms.some(p => p.level === 'high');
-                    }).length
-                },
-                permissions: getPermissionDetails(),
-                growthTracking: {
-                    lastSnapshot: state.lastSnapshot,
-                    totalSnapshots: Object.values(state.growthHistory).reduce((sum, h) => sum + h.length, 0),
-                    trackedServers: Object.keys(state.growthHistory).length
-                }
-            };
-            
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `discord-complete-export-${Date.now()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            alert(`✅ Comprehensive export complete!
+            try {
+                const data = {
+                    exportDate: new Date().toISOString(),
+                    exportVersion: '2.0',
+                    user: {
+                        id: state.user.id,
+                        username: state.user.username,
+                        discriminator: state.user.discriminator,
+                        avatar: state.user.avatar
+                    },
+                    servers: state.servers.map(server => {
+                        const health = state.serverHealth[server.id] || { score: 0, issues: [] };
+                        const growth = getServerGrowth(server.id);
+                        const permissions = analyzePermissions(server);
+                        
+                        return {
+                            id: server.id,
+                            name: server.name,
+                            icon: server.icon,
+                            memberCount: server.memberCount,
+                            owner: server.owner,
+                            permissions: permissions.map(p => p.text),
+                            categories: categorizeServer(server),
+                            healthScore: health.score,
+                            healthIssues: health.issues,
+                            growth: growth,
+                            favorite: state.favoriteServers.has(server.id),
+                            notes: state.serverNotes[server.id] || null,
+                            reminder: state.serverReminders[server.id] || null,
+                            lfgServer: state.lfgServers.has(server.id),
+                            detectedGame: state.gameDetections[server.id] || null,
+                            visitHistory: state.visitHistory[server.id] || []
+                        };
+                    }),
+                    connections: state.connections.map(c => ({
+                        type: c.type,
+                        name: c.name,
+                        verified: c.verified
+                    })),
+                    statistics: {
+                        totalServers: state.servers.length,
+                        ownedServers: state.servers.filter(s => s.owner).length,
+                        largeServers: state.servers.filter(s => s.memberCount >= 5000).length,
+                        smallServers: state.servers.filter(s => s.memberCount < 100).length,
+                        favoriteServers: state.favoriteServers.size,
+                        categorizedServers: Object.keys(state.serverCategories).length,
+                        serversWithNotes: Object.keys(state.serverNotes).length,
+                        lfgServers: state.lfgServers.size,
+                        adminServers: state.servers.filter(s => {
+                            const perms = analyzePermissions(s);
+                            return perms.some(p => p.level === 'high');
+                        }).length
+                    },
+                    permissions: getPermissionDetails(),
+                    growthTracking: {
+                        lastSnapshot: state.lastSnapshot,
+                        totalSnapshots: Object.values(state.growthHistory).reduce((sum, h) => sum + h.length, 0),
+                        trackedServers: Object.keys(state.growthHistory).length
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `discord-complete-export-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                alert(`✅ Comprehensive export complete!
 
 Exported data includes:
 • ${data.servers.length} servers with full details
@@ -3316,6 +3317,10 @@ Exported data includes:
 • Growth tracking data
 • Permission analysis
 • And much more!`);
+            } catch (error) {
+                console.error('Export error:', error);
+                alert(`❌ Export failed: ${error.message}\n\nPlease check the console for details.`);
+            }
         }
 
         // ===== ENHANCED FEATURE 5: BETTER HEALTH SCORES =====
