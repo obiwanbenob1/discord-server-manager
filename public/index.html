@@ -3191,10 +3191,10 @@ END:VEVENT
                                         const g = getServerGrowth(m.server.id);
                                         return g ? `${g.change > 0 ? '+' : ''}${g.percentChange}%` : 'No data';
                                     })}
-                                    ${renderComparisonRow('👑 Owner', servers, s => s.owner ? '✅ Yes' : '❌ No')}
-                                    ${renderComparisonRow('🔐 Admin Perms', metrics, m => m.hasAdminPerms ? '⚠️ Yes' : '✅ No')}
-                                    ${renderComparisonRow('⭐ Favorite', metrics, m => m.isFavorite ? '✅ Yes' : '❌ No')}
-                                    ${renderComparisonRow('📝 Has Notes', metrics, m => m.hasNotes ? '✅ Yes' : '❌ No')}
+                                    ${renderComparisonRow('👑 Owner', servers, s => s.owner ? 'Yes' : 'No')}
+                                    ${renderComparisonRow('🔐 Admin Perms', metrics, m => m.hasAdminPerms ? 'Yes' : 'No')}
+                                    ${renderComparisonRow('⭐ Favorite', metrics, m => m.isFavorite ? 'Yes' : 'No')}
+                                    ${renderComparisonRow('📝 Has Notes', metrics, m => m.hasNotes ? 'Yes' : 'No')}
                                     ${renderComparisonRow('📁 Categories', metrics, m => m.categoryCount)}
                                 </tbody>
                             </table>
