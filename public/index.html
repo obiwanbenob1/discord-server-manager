@@ -3802,6 +3802,66 @@ Exported data includes:
                     </div>
 
                     <div class="insight-section">
+                        <h3>⚙️ Server Manager</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Quick access to servers you manage
+                        </p>
+                        ${(() => {
+                            // Find servers where user has "Manage Server" permission
+                            const manageableServers = state.servers.filter(s => {
+                                const permissions = parseInt(s.permissions);
+                                // 0x20 = MANAGE_GUILD permission
+                                // 0x8 = ADMINISTRATOR permission (also has manage)
+                                return (permissions & 0x20) || (permissions & 0x8);
+                            }).sort((a, b) => a.name.localeCompare(b.name));
+
+                            if (manageableServers.length === 0) {
+                                return `
+                                    <div class="info-box">
+                                        <p><strong>ℹ️ No manageable servers</strong></p>
+                                        <p>You don't have "Manage Server" permissions in any servers.</p>
+                                    </div>
+                                `;
+                            }
+
+                            return `
+                                <div class="info-box" style="margin-bottom: 1.5rem;">
+                                    <p><strong>✅ You can manage ${manageableServers.length} server${manageableServers.length > 1 ? 's' : ''}</strong></p>
+                                    <p style="margin-top: 0.5rem;">Click "Manage Server" to open settings directly in Discord.</p>
+                                </div>
+                                
+                                <div style="max-height: 400px; overflow-y: auto;">
+                                    ${manageableServers.map(server => {
+                                        const isOwner = server.owner;
+                                        const permissions = parseInt(server.permissions);
+                                        const isAdmin = permissions & 0x8;
+                                        
+                                        return `
+                                            <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.75rem;">
+                                                <div style="flex: 1; min-width: 0;">
+                                                    <div style="font-weight: bold; margin-bottom: 0.25rem;">${server.name}</div>
+                                                    <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                                        ${server.memberCount.toLocaleString()} members
+                                                        ${isOwner ? ' • 👑 Owner' : isAdmin ? ' • ⚠️ Administrator' : ' • ⚙️ Manager'}
+                                                    </div>
+                                                </div>
+                                                <a 
+                                                    href="https://discord.com/channels/${server.id}" 
+                                                    target="_blank" 
+                                                    class="btn btn-primary" 
+                                                    style="text-decoration: none; white-space: nowrap;"
+                                                    onclick="event.stopPropagation();">
+                                                    ⚙️ Manage Server
+                                                </a>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `;
+                        })()}
+                    </div>
+
+                    <div class="insight-section">
                         <h3>📈 Server Growth Tracker</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1rem;">
                             Track member count changes over time
