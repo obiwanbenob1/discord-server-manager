@@ -3753,35 +3753,6 @@ Exported data includes:
                     </div>
 
                     <div class="insight-section">
-                        <h3>🔐 Permission Auditor</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                            Servers where you have elevated permissions
-                        </p>
-                        ${highRiskServers.length > 0 ? `
-                            <div class="warning-box">
-                                <strong>⚠️ ${highRiskServers.length} server${highRiskServers.length > 1 ? 's' : ''} with Admin access</strong>
-                                <p style="margin-top: 0.5rem;">Review these servers to ensure you trust them.</p>
-                            </div>
-                            ${highRiskServers.slice(0, 5).map(s => {
-                                const perms = analyzePermissions(s);
-                                return `
-                                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
-                                        <div style="font-weight: bold;">${s.name}</div>
-                                        <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">
-                                            ${perms.map(p => `<span class="badge badge-${p.level === 'high' ? 'danger' : 'warning'}">${p.text}</span>`).join(' ')}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        ` : `
-                            <div class="info-box">
-                                <p><strong>✅ No admin permissions</strong></p>
-                                <p>You don't have administrator access in any servers (except those you own).</p>
-                            </div>
-                        `}
-                    </div>
-
-                    <div class="insight-section">
                         <h3>📈 Server Growth Tracker</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1rem;">
                             Track member count changes over time
@@ -4712,7 +4683,7 @@ Exported data includes:
                             <div class="insight-section">
                                 <h3>🔐 Security Features</h3>
                                 <div style="color: var(--text-secondary); line-height: 1.8;">
-                                    <p>• <strong>Permission Auditor:</strong> Find servers with elevated permissions</p>
+                                    <p>• <strong>Role & Permission Analyzer:</strong> View all permissions across servers (Analytics tab)</p>
                                     <p>• <strong>Security Scoring:</strong> Health scores based on security factors</p>
                                     <p>• <strong>Server Setup Guide:</strong> Learn to create servers safely with cold accounts</p>
                                     <p>• <strong>Bot Safety Guide:</strong> Add bots without compromising security</p>
