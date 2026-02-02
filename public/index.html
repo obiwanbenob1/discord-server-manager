@@ -3652,14 +3652,58 @@ Exported data includes:
 
         function renderAnalyticsTab() {
             const roleMap = getAllRoles();
+            const ownedServers = state.servers.filter(s => s.owner);
+            const totalMembers = state.servers.reduce((sum, s) => sum + s.memberCount, 0);
+            const avgMembers = Math.round(totalMembers / state.servers.length);
+            
+            const categoryCounts = {};
+            state.servers.forEach(s => {
+                categorizeServer(s).forEach(cat => {
+                    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                });
+            });
 
             return `
                 <div class="insight-grid">
-                    <!-- Role Analyzer -->
+                    <!-- Server Statistics -->
+                    <div class="insight-section">
+                        <h3>📊 Server Statistics</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Overview of your Discord presence
+                        </p>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${state.servers.length}</div>
+                                <div class="stat-label">Total Servers</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${ownedServers.length}</div>
+                                <div class="stat-label">You Own</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${categoryCounts.gaming || 0}</div>
+                                <div class="stat-label">Gaming</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${categoryCounts.personal || 0}</div>
+                                <div class="stat-label">Personal</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${totalMembers.toLocaleString()}</div>
+                                <div class="stat-label">Total Members</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${avgMembers.toLocaleString()}</div>
+                                <div class="stat-label">Avg/Server</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Role & Permission Analyzer -->
                     <div class="insight-section">
                         <h3>👤 Role & Permission Analyzer</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            All roles and permissions across your servers (REAL DATA)
+                            All roles and permissions across your servers
                         </p>
 
                         <div class="stats-grid" style="margin-bottom: 1.5rem;">
@@ -3680,8 +3724,9 @@ Exported data includes:
                         <button class="btn btn-primary" onclick="showDetailedPermissionsModal()" style="width: 100%; margin-bottom: 1.5rem;">
                             🔍 View Detailed Permission Breakdown
                         </button>
+                        
                         <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">Your Roles:</h4>
-                        ${Array.from(roleMap.entries()).map(([role, servers]) => {
+                        ${Array.from(roleMap.entries()).slice(0, 10).map(([role, servers]) => {
                             const highestLevel = servers.some(s => s.level === 'high') ? 'high' : servers.some(s => s.level === 'medium') ? 'medium' : 'low';
                             const badgeColor = highestLevel === 'high' ? 'danger' : highestLevel === 'medium' ? 'warning' : 'secondary';
                             
@@ -3698,29 +3743,33 @@ Exported data includes:
                                 </div>
                             `;
                         }).join('')}
-                    </div>
-
-                    <!-- Coming Soon -->
-                    <div class="insight-section">
-                        <h3>🚀 Coming Soon: Real Activity Tracking</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Future features will include browser extension for REAL data
-                        </p>
-
-                        <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
-                            <h4 style="color: var(--accent-primary); margin-bottom: 1rem;">📱 Browser Extension (Phase 6)</h4>
-                            <ul style="color: var(--text-secondary); line-height: 1.8;">
-                                <li>✅ <strong>Real notification tracking</strong> - Actual count, not estimates</li>
-                                <li>✅ <strong>Activity heatmap</strong> - GitHub-style visualization</li>
-                                <li>✅ <strong>Message analytics</strong> - Which servers you actually use</li>
-                                <li>✅ <strong>Time tracking</strong> - How long you spend in each server</li>
-                                <li>✅ <strong>DM analytics</strong> - Private message patterns</li>
-                            </ul>
-                            <p style="color: var(--accent-secondary); margin-top: 1rem; font-weight: bold;">
-                                💡 All data will be stored locally - complete privacy!
+                        ${roleMap.size > 10 ? `
+                            <p style="color: var(--text-secondary); text-align: center; margin-top: 1rem;">
+                                Showing 10 of ${roleMap.size} roles. Click "View Detailed Permission Breakdown" for all.
                             </p>
-                        </div>
+                        ` : ''}
                     </div>
+
+                    ${state.connections.length > 0 ? `
+                        <div class="insight-section">
+                            <h3>🔗 Connected Accounts</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                Accounts you've linked to Discord
+                            </p>
+                            ${state.connections.map(conn => `
+                                <div class="connection-item">
+                                    <div class="connection-icon">${conn.type.charAt(0).toUpperCase()}</div>
+                                    <div class="connection-details">
+                                        <div class="connection-name">${conn.name}</div>
+                                        <div class="connection-type">${conn.type.charAt(0).toUpperCase() + conn.type.slice(1)}${conn.verified ? ' • Verified' : ''}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            <a href="https://discord.com/settings/connections" target="_blank" class="btn" style="width: 100%; text-decoration: none; text-align: center; margin-top: 1rem;">
+                                Manage Connections
+                            </a>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -4837,9 +4886,6 @@ Exported data includes:
                             <button class="tab ${state.currentTab === 'tools' ? 'active' : ''}" onclick="switchTab('tools')">
                                 🔧 Tools
                             </button>
-                            <button class="tab ${state.currentTab === 'insights' ? 'active' : ''}" onclick="switchTab('insights')">
-                                📊 Insights
-                            </button>
                             <button class="tab ${state.currentTab === 'guide' ? 'active' : ''}" onclick="switchTab('guide')">
                                 🛡️ Safety Guide
                             </button>
@@ -4861,7 +4907,6 @@ Exported data includes:
                     ${state.currentTab === 'servers' ? renderServersTab() : ''}
                     ${state.currentTab === 'analytics' ? renderAnalyticsTab() : ''}
                     ${state.currentTab === 'tools' ? renderToolsTab() : ''}
-                    ${state.currentTab === 'insights' ? renderInsightsTab() : ''}
                     ${state.currentTab === 'guide' ? renderGuideTab() : ''}
                     ${state.currentTab === 'serversetup' ? renderServerSetupTab() : ''}
                     ${state.currentTab === 'bots' ? renderBotGuideTab() : ''}
