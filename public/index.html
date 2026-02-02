@@ -3845,14 +3845,12 @@ Exported data includes:
                                                         ${isOwner ? ' • 👑 Owner' : isAdmin ? ' • ⚠️ Administrator' : ' • ⚙️ Manager'}
                                                     </div>
                                                 </div>
-                                                <a 
-                                                    href="https://discord.com/channels/${server.id}" 
-                                                    target="_blank" 
+                                                <button 
                                                     class="btn btn-primary" 
-                                                    style="text-decoration: none; white-space: nowrap;"
-                                                    onclick="event.stopPropagation();">
+                                                    style="white-space: nowrap;"
+                                                    onclick="event.stopPropagation(); openDiscordServer('${server.id}');">
                                                     ⚙️ Manage Server
-                                                </a>
+                                                </button>
                                             </div>
                                         `;
                                     }).join('')}
