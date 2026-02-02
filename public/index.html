@@ -3115,18 +3115,20 @@ END:VEVENT
 
         // ===== ENHANCED FEATURE 2: ADVANCED SERVER COMPARISON =====
         function showAdvancedComparisonModal() {
-            if (state.serverComparison.length < 2) {
+            const selectedArray = Array.from(state.selectedServers);
+            
+            if (selectedArray.length < 2) {
                 alert('Select at least 2 servers to compare!');
                 return;
             }
 
-            const servers = state.serverComparison
+            const servers = selectedArray
                 .map(id => state.servers.find(s => s.id === id))
                 .filter(Boolean);
 
             // Calculate metrics for comparison
             const metrics = servers.map(s => {
-                const health = state.serverHealth[s.id] || { score: 0 };
+                const health = (state.serverHealth && state.serverHealth[s.id]) || { score: 0 };
                 const growth = getServerGrowth(s.id);
                 const perms = analyzePermissions(s);
                 const categories = categorizeServer(s);
@@ -3138,8 +3140,8 @@ END:VEVENT
                     hasAdminPerms: perms.some(p => p.level === 'high'),
                     categoryCount: categories.length,
                     isOwner: s.owner,
-                    isFavorite: state.favoriteServers.has(s.id),
-                    hasNotes: !!state.serverNotes[s.id]
+                    isFavorite: state.favoriteServers && state.favoriteServers.has(s.id),
+                    hasNotes: state.serverNotes && !!state.serverNotes[s.id]
                 };
             });
 
